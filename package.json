@@ -27,7 +27,8 @@
     "test:domains-integration": "tsx scripts/validate-custom-domains.ts",
     "test:connect-integration": "tsx scripts/validate-stripe-connect.ts",
     "test:billing-integration": "tsx scripts/validate-saas-billing.ts",
-    "test:analytics-integration": "tsx scripts/validate-analytics.ts"
+    "test:analytics-integration": "tsx scripts/validate-analytics.ts",
+    "test:platform-admin-integration": "tsx scripts/validate-platform-admin.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
