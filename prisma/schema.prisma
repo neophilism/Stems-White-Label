@@ -57,6 +57,17 @@ enum RevealStepAction {
   SILENCE
 }
 
+enum ProcessingJobType {
+  PROCESS_AUDIO
+}
+
+enum ProcessingJobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -119,6 +130,7 @@ model Tenant {
   collections  Collection[]
   works        Work[]
   audioAssets  AudioAsset[]
+  processingJobs ProcessingJob[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -313,30 +325,61 @@ model RevealStep {
 }
 
 model AudioAsset {
-  id           String           @id @default(cuid())
-  tenantId     String
-  workId       String
-  stemGroupId  String?
-  kind         AudioAssetKind
-  status       AudioAssetStatus @default(PENDING)
-  label        String?
-  fileName     String
-  storageKey   String?
-  mimeType     String?
-  sizeBytes    BigInt?
-  durationMs   Int?
-  sampleRateHz Int?
-  bitDepth     Int?
-  channels     Int?
-  checksumSha256 String?
-  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  work         Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
-  stemGroup    StemGroup?       @relation(fields: [stemGroupId], references: [id], onDelete: SetNull)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  id                 String           @id @default(cuid())
+  tenantId           String
+  workId             String
+  stemGroupId        String?
+  sourceAssetId      String?
+  kind               AudioAssetKind
+  status             AudioAssetStatus @default(PENDING)
+  label              String?
+  fileName           String
+  storageKey         String?
+  waveformStorageKey String?
+  mimeType           String?
+  sizeBytes          BigInt?
+  durationMs         Int?
+  sampleRateHz       Int?
+  bitDepth           Int?
+  channels           Int?
+  checksumSha256     String?
+  tenant             Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  work               Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
+  stemGroup          StemGroup?       @relation(fields: [stemGroupId], references: [id], onDelete: SetNull)
+  sourceAsset        AudioAsset?      @relation("AudioAssetDerivatives", fields: [sourceAssetId], references: [id], onDelete: Cascade)
+  derivatives        AudioAsset[]     @relation("AudioAssetDerivatives")
+  processingJobs     ProcessingJob[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@unique([tenantId, storageKey])
+  @@unique([sourceAssetId, kind])
   @@index([tenantId, kind, status])
   @@index([workId])
   @@index([stemGroupId])
+  @@index([sourceAssetId])
+}
+
+model ProcessingJob {
+  id           String              @id @default(cuid())
+  tenantId     String
+  audioAssetId String
+  type         ProcessingJobType   @default(PROCESS_AUDIO)
+  status       ProcessingJobStatus @default(QUEUED)
+  attempts     Int                 @default(0)
+  maxAttempts  Int                 @default(3)
+  runAfter     DateTime            @default(now())
+  lockedAt     DateTime?
+  lockedBy     String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  lastError    String?             @db.Text
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  audioAsset   AudioAsset          @relation(fields: [audioAssetId], references: [id], onDelete: Cascade)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  @@unique([audioAssetId, type])
+  @@index([status, runAfter, createdAt])
+  @@index([tenantId, status])
 }
