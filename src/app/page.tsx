@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { WorkCard } from "@/components/storefront/work-card";
 import { getStorefrontHome } from "@/lib/storefront";
+import { getResolvedTenantTheme } from "@/lib/theme";
 import { getCurrentTenant } from "@/lib/tenant";
 
 export default async function HomePage() {
@@ -13,9 +14,10 @@ export default async function HomePage() {
 
   if (!tenant) notFound();
 
-  const { featuredWork, collections, recentWorks } = await getStorefrontHome(
-    tenant.id,
-  );
+  const [{ featuredWork, collections, recentWorks }, theme] = await Promise.all([
+    getStorefrontHome(tenant.id),
+    getResolvedTenantTheme(tenant.id),
+  ]);
 
   const secondaryWorks = featuredWork
     ? recentWorks.filter((work) => work.id !== featuredWork.id)
@@ -26,12 +28,12 @@ export default async function HomePage() {
       <SiteHeader tenantName={tenant.name} />
 
       <main>
-        <section className="hero storefront-shell">
+        <section className={"hero storefront-shell hero--" + theme.heroStyle.toLowerCase().replaceAll("_", "-")}>
           <div className="hero__copy">
-            <p className="micro-label">Unsealed source archive</p>
+            <p className="micro-label">{theme.heroEyebrow ?? tenant.name}</p>
             <h1>
-              The record is not a file.
-              <span>It is a construction.</span>
+              {theme.heroHeadline ?? "The record is not a file."}
+              <span>{theme.heroSubheadline ?? "It is a construction."}</span>
             </h1>
             <p className="hero__lede">
               Enter the masters, sections, and source materials behind the work.
@@ -45,7 +47,7 @@ export default async function HomePage() {
 
           <div className="display-case" aria-hidden="true">
             <div className="display-case__glass">
-              <span className="display-case__index">UR / SOURCE</span>
+              <span className="display-case__index">{(theme.logoText ?? tenant.name).toUpperCase()} / SOURCE</span>
               <div className="display-case__object">
                 <span>MASTER</span>
                 <span>SECTIONS</span>
@@ -109,7 +111,7 @@ export default async function HomePage() {
               </div>
             ) : (
               <div className="empty-collection-state">
-                <span className="empty-collection-state__mark">UR</span>
+                <span className="empty-collection-state__mark">{theme.logoText ?? "SRC"}</span>
                 <div>
                   <p className="micro-label">Collection room</p>
                   <h3>No published collections</h3>
