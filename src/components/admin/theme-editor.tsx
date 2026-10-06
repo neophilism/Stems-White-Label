@@ -38,7 +38,17 @@ type Payload = {
   assetUrls: { logo: string | null; favicon: string | null };
 };
 
-const colorFields: Array<[keyof Theme, string]> = [
+type ThemeColorKey =
+  | "background"
+  | "surface"
+  | "surfaceRaised"
+  | "ink"
+  | "inkSoft"
+  | "muted"
+  | "accent"
+  | "accentSoft";
+
+const colorFields: Array<[ThemeColorKey, string]> = [
   ["background", "Background"],
   ["surface", "Surface"],
   ["surfaceRaised", "Raised surface"],
