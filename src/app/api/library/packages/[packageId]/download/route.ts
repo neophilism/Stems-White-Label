@@ -37,5 +37,13 @@ export async function GET(_request: Request, { params }: RouteProps) {
     contentType: "application/zip",
   });
 
+  await db.downloadPackage.update({
+    where: { id: record.id },
+    data: {
+      downloadsCount: { increment: 1 },
+      lastDownloadedAt: new Date(),
+    },
+  });
+
   return NextResponse.redirect(url, 303);
 }
