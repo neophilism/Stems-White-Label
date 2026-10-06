@@ -129,19 +129,3 @@ export function signedWaveformPath(assetId: string) {
   );
 }
 
-export function buildPreviewOriginUrl(baseUrl: string, storageKey: string) {
-  const segments = storageKey.split("/").filter(Boolean);
-
-  if (
-    segments.length === 0 ||
-    segments.some((segment) => segment === "." || segment === "..")
-  ) {
-    throw new Error("Invalid preview storage key.");
-  }
-
-  const base = new URL(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/");
-  const prefix = base.pathname.endsWith("/") ? base.pathname : base.pathname + "/";
-  base.pathname = prefix + segments.map(encodeURIComponent).join("/");
-
-  return base;
-}
