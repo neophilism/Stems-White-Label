@@ -148,6 +148,22 @@ export async function getPublishedWork(tenantId: string, slug: string) {
         where: { status: "READY" },
         orderBy: { createdAt: "desc" },
       },
+      licenseProducts: {
+        where: { isActive: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        include: {
+          selectedStems: {
+            include: {
+              stemGroup: { select: { id: true, label: true } },
+            },
+          },
+          versions: {
+            where: { retiredAt: null },
+            orderBy: { version: "desc" },
+            take: 1,
+          },
+        },
+      },
       collections: {
         where: {
           collection: { status: "PUBLISHED" },
