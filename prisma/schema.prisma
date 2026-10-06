@@ -74,6 +74,12 @@ enum ArtworkAssetStatus {
   FAILED
 }
 
+enum LicenseScope {
+  WORK
+  SELECTED_STEMS
+  ALL_STEMS
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -138,6 +144,7 @@ model Tenant {
   audioAssets  AudioAsset[]
   processingJobs ProcessingJob[]
   artworkAssets ArtworkAsset[]
+  licenseProducts LicenseProduct[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -227,6 +234,7 @@ model Work {
   sections        WorkSection[]
   revealSequences RevealSequence[]
   artwork          ArtworkAsset?
+  licenseProducts  LicenseProduct[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -293,6 +301,7 @@ model StemGroup {
   children     StemGroup[]  @relation("StemGroupHierarchy")
   audioAssets  AudioAsset[]
   revealSteps  RevealStep[]
+  licenseProducts LicenseProductStem[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -408,4 +417,59 @@ model ArtworkAsset {
   updatedAt  DateTime           @updatedAt
 
   @@index([tenantId, status])
+}
+
+
+model LicenseProduct {
+  id              String           @id @default(cuid())
+  tenantId        String
+  workId          String
+  slug            String
+  name            String
+  summary         String?          @db.Text
+  scope           LicenseScope     @default(ALL_STEMS)
+  isActive        Boolean          @default(true)
+  position        Int              @default(0)
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  work            Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
+  versions        LicenseVersion[]
+  selectedStems   LicenseProductStem[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([workId, slug])
+  @@index([tenantId, isActive])
+  @@index([workId, isActive, position])
+}
+
+model LicenseVersion {
+  id                    String         @id @default(cuid())
+  licenseProductId      String
+  version               Int
+  priceCents            Int
+  currency              String         @default("USD")
+  termsText             String         @db.Text
+  attributionRequired   Boolean        @default(false)
+  commercialUseAllowed  Boolean        @default(true)
+  derivativesAllowed    Boolean        @default(true)
+  redistributionAllowed Boolean        @default(false)
+  seatLimit             Int?
+  projectLimit          Int?
+  effectiveAt           DateTime       @default(now())
+  retiredAt             DateTime?
+  licenseProduct        LicenseProduct @relation(fields: [licenseProductId], references: [id], onDelete: Cascade)
+  createdAt             DateTime       @default(now())
+
+  @@unique([licenseProductId, version])
+  @@index([licenseProductId, effectiveAt])
+}
+
+model LicenseProductStem {
+  licenseProductId String
+  stemGroupId      String
+  licenseProduct   LicenseProduct @relation(fields: [licenseProductId], references: [id], onDelete: Cascade)
+  stemGroup        StemGroup      @relation(fields: [stemGroupId], references: [id], onDelete: Cascade)
+
+  @@id([licenseProductId, stemGroupId])
+  @@index([stemGroupId])
 }
