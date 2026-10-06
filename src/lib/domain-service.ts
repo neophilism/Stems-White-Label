@@ -63,7 +63,9 @@ export async function registerTenantDomain(tenantId: string, value: string) {
     await db.tenantDomain.delete({ where: { id: existing.id } });
   }
 
-  const count = await db.tenantDomain.count({ where: { tenantId } });
+  const count = await db.tenantDomain.count({
+    where: { tenantId, verificationToken: { not: null } },
+  });
   if (count >= maxDomainsPerTenant()) {
     throw new Error("This tenant has reached its custom-domain limit.");
   }
