@@ -7,21 +7,27 @@ export default async function AdminPage() {
     await requireTenantPermission("catalog.read");
 
   return (
-    <main className="shell" style={{ padding: "56px 0" }}>
+    <main className="cms-shell cms-shell--narrow">
       <p className="eyebrow">Tenant administration</p>
-      <h1 style={{ fontSize: "3rem", marginBottom: 32 }}>{tenant.name}</h1>
-      <section className="card">
-        <p>
-          Signed in as <strong>{session.user?.email ?? session.user?.name}</strong>
+      <h1 style={{ fontFamily: "var(--serif)", fontSize: "clamp(3rem, 8vw, 6rem)", fontWeight: 400, marginBottom: 16 }}>
+        {tenant.name}
+      </h1>
+      <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+        Signed in as {session.user?.email ?? session.user?.name}. Role: {membership.role}.
+      </p>
+
+      <section className="cms-panel">
+        <p className="eyebrow">Catalog</p>
+        <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+          Source-material CMS
+        </h2>
+        <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+          Create Works, manage source groups, upload masters and stems, edit credits
+          and editorial material, choreograph Reveal the Record, preview, and publish.
         </p>
-        <p>
-          Role: <strong>{membership.role}</strong>
-        </p>
-        <p style={{ color: "var(--muted)" }}>
-          The core catalog domain is active. Publishing and editing interfaces
-          arrive in later milestones.
-        </p>
-        <Link href="/admin/catalog">View catalog foundation</Link>
+        <Link className="cms-primary-button" href="/admin/catalog">
+          Open Catalog CMS
+        </Link>
       </section>
     </main>
   );

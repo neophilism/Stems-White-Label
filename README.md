@@ -264,6 +264,60 @@ the domain model and public playback behavior are complete here. The public
 player assumes no default reveal order: every timed source transition comes from
 the creator-authored sequence data.
 
+
+## Catalog CMS
+
+PR 8 turns the platform foundation into a creator-operated publishing system.
+
+The tenant Catalog CMS provides:
+
+- catalog dashboard with Work status and source counts
+- new Work creation
+- metadata editing for title, slug, subtitle, description, catalog number, BPM,
+  musical key, duration, and primary artist
+- private JPG/PNG/WebP cover-art upload through presigned object-storage PUTs
+- full-master upload through the PR 7 source-audio pipeline
+- arbitrary creator-defined StemGroup creation and ordering
+- per-group STEM uploads and processing status
+- credit editing and ordering
+- freeform editorial WorkSection editing and ordering
+- Collection assignment
+- Reveal the Record sequence authoring with timed actions, source targets,
+  captions, and publish state
+- authenticated draft preview
+- public Work link after publication
+- publish, unpublish, archive, and restore controls
+
+The CMS never uploads large audio through the Next.js process. Master/stem files
+use direct private object-storage upload intents, then enter the durable processing
+queue. The editor polls while source assets are PENDING or PROCESSING and displays
+the worker's resulting technical metadata or failure information.
+
+### Cover artwork
+
+Artwork is represented by ArtworkAsset and remains in the same private
+S3-compatible store. The CMS validates image type and size, signs a direct upload,
+HEAD-verifies the completed object, and marks it READY. Published artwork is served
+through short-lived signed application URLs; authenticated catalog users can also
+see READY artwork in the draft preview. If no artwork is READY, the storefront
+continues to use its deterministic typographic jacket.
+
+### Publishing rules
+
+A Work can publish only from READY status, with at least one READY MASTER source
+and no PENDING, PROCESSING, or FAILED source originals. Publishing sets
+publishedAt. Unpublishing returns the Work to READY. Published Works must be
+unpublished before archival.
+
+### CMS validation
+
+CI now includes a PostgreSQL Catalog CMS integration test in addition to the
+existing unit, queue, and FFmpeg validations. The integration test creates a real
+tenant catalog graph containing Artist, Collection, Work, credit, editorial
+section, StemGroup, RevealSequence/RevealStep, and ArtworkAsset records, reloads
+the graph, and validates relational behavior including RevealStep source nulling
+when a StemGroup is deleted.
+
 ## Local setup
 
 1. Copy .env.example to .env.

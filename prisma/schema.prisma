@@ -68,6 +68,12 @@ enum ProcessingJobStatus {
   FAILED
 }
 
+enum ArtworkAssetStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -131,6 +137,7 @@ model Tenant {
   works        Work[]
   audioAssets  AudioAsset[]
   processingJobs ProcessingJob[]
+  artworkAssets ArtworkAsset[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -219,6 +226,7 @@ model Work {
   audioAssets     AudioAsset[]
   sections        WorkSection[]
   revealSequences RevealSequence[]
+  artwork          ArtworkAsset?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -381,5 +389,23 @@ model ProcessingJob {
 
   @@unique([audioAssetId, type])
   @@index([status, runAfter, createdAt])
+  @@index([tenantId, status])
+}
+
+
+model ArtworkAsset {
+  id         String             @id @default(cuid())
+  tenantId   String
+  workId     String             @unique
+  status     ArtworkAssetStatus @default(PENDING)
+  fileName   String
+  storageKey String?            @unique
+  mimeType   String
+  sizeBytes  BigInt
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  work       Work               @relation(fields: [workId], references: [id], onDelete: Cascade)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
   @@index([tenantId, status])
 }

@@ -1,3 +1,4 @@
+import { signedArtworkPath } from "@/lib/artwork";
 import { db } from "@/lib/db";
 
 export async function getStorefrontHome(tenantId: string) {
@@ -7,6 +8,7 @@ export async function getStorefrontHome(tenantId: string) {
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       include: {
         primaryArtist: true,
+        artwork: { select: { id: true, status: true } },
         stemGroups: {
           orderBy: { position: "asc" },
           select: { id: true, label: true },
@@ -29,6 +31,7 @@ export async function getStorefrontHome(tenantId: string) {
       take: 6,
       include: {
         primaryArtist: true,
+        artwork: { select: { id: true, status: true } },
         stemGroups: {
           orderBy: { position: "asc" },
           select: { id: true, label: true },
@@ -37,11 +40,23 @@ export async function getStorefrontHome(tenantId: string) {
     }),
   ]);
 
-  return { featuredWork, collections, recentWorks };
+  const decorateWork = <T extends { artwork?: { id: string; status: string } | null }>(
+    work: T,
+  ) => ({
+    ...work,
+    artworkUrl:
+      work.artwork?.status === "READY" ? signedArtworkPath(work.artwork.id) : null,
+  });
+
+  return {
+    featuredWork: featuredWork ? decorateWork(featuredWork) : null,
+    collections,
+    recentWorks: recentWorks.map(decorateWork),
+  };
 }
 
 export async function getPublishedCollection(tenantId: string, slug: string) {
-  return db.collection.findFirst({
+  const collection = await db.collection.findFirst({
     where: {
       tenantId,
       slug,
@@ -57,6 +72,7 @@ export async function getPublishedCollection(tenantId: string, slug: string) {
           work: {
             include: {
               primaryArtist: true,
+              artwork: { select: { id: true, status: true } },
               stemGroups: {
                 orderBy: { position: "asc" },
                 select: { id: true, label: true },
@@ -67,11 +83,27 @@ export async function getPublishedCollection(tenantId: string, slug: string) {
       },
     },
   });
+
+  if (!collection) return null;
+
+  return {
+    ...collection,
+    works: collection.works.map((entry) => ({
+      ...entry,
+      work: {
+        ...entry.work,
+        artworkUrl:
+          entry.work.artwork?.status === "READY"
+            ? signedArtworkPath(entry.work.artwork.id)
+            : null,
+      },
+    })),
+  };
 }
 
 
 export async function getPublishedWork(tenantId: string, slug: string) {
-  return db.work.findFirst({
+  const work = await db.work.findFirst({
     where: {
       tenantId,
       slug,
@@ -79,6 +111,7 @@ export async function getPublishedWork(tenantId: string, slug: string) {
     },
     include: {
       primaryArtist: true,
+      artwork: { select: { id: true, status: true } },
       credits: {
         orderBy: { position: "asc" },
       },
@@ -107,13 +140,13 @@ export async function getPublishedWork(tenantId: string, slug: string) {
           },
           audioAssets: {
             where: { status: "READY" },
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "desc" },
           },
         },
       },
       audioAssets: {
         where: { status: "READY" },
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
       },
       collections: {
         where: {
@@ -126,6 +159,14 @@ export async function getPublishedWork(tenantId: string, slug: string) {
       },
     },
   });
+
+  if (!work) return null;
+
+  return {
+    ...work,
+    artworkUrl:
+      work.artwork?.status === "READY" ? signedArtworkPath(work.artwork.id) : null,
+  };
 }
 
 export function formatTechnicalSpec(asset: {

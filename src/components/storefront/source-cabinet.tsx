@@ -14,6 +14,8 @@ type SourceCabinetProps = {
       bitDepth: number | null;
       channels: number | null;
       mimeType: string | null;
+      kind?: string;
+      sourceAssetId?: string | null;
     }>;
   }>;
 };
@@ -36,7 +38,10 @@ export function SourceCabinet({ stemGroups }: SourceCabinetProps) {
 
       <div className="source-cabinet__list">
         {stemGroups.map((stem, index) => {
-          const primaryAsset = stem.audioAssets[0];
+          const primaryAsset =
+            stem.audioAssets.find(
+              (asset) => asset.kind === "STEM" && !asset.sourceAssetId,
+            ) ?? stem.audioAssets.find((asset) => !asset.sourceAssetId) ?? stem.audioAssets[0];
           const technical = primaryAsset
             ? formatTechnicalSpec(primaryAsset)
             : "";

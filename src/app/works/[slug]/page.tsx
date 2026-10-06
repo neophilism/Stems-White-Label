@@ -102,6 +102,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
             <ArtworkPanel
               title={work.title}
               catalogNumber={work.catalogNumber}
+              artworkUrl={work.artworkUrl}
               size="hero"
             />
           </header>
