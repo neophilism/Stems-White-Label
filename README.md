@@ -945,6 +945,267 @@ All earlier migrations, unit tests, queue, CMS, navigation, theme, custom-domain
 licensing, checkout, delivery, ZIP-package, FFmpeg, TypeScript, and production
 build gates remain enabled.
 
+
+## SaaS billing, trials, and usage limits
+
+PR 16 adds the platform subscription layer. This is deliberately separate from
+the Stripe Connect merchant account in PR 15:
+
+- Stripe Connect represents the tenant as a seller receiving proceeds from
+  source-license purchases.
+- Stripe Billing represents the tenant as a customer paying for this SaaS
+  platform.
+
+A tenant can therefore have both a connected merchant account and a platform
+Billing Customer without the identifiers or settlement flows being mixed.
+
+### Deployment-safe grandfathering
+
+Every Tenant that exists when the PR 16 migration runs receives a
+GRANDFATHERED TenantSubscription with unlimited numeric quotas and access to
+custom domains and white-label theming.
+
+This prevents a production deployment from suddenly disabling existing tenants
+because Stripe Billing has not yet been configured.
+
+Fresh database installs also seed Unsealed Records as GRANDFATHERED. New tenants
+created after PR 16 do not automatically receive a grandfathered row:
+ensureTenantSubscription creates them as UNSUBSCRIBED until they choose a plan.
+
+### Stripe plan catalog
+
+Plan names and prices are not hard-coded in the application.
+
+STRIPE_BILLING_PRICE_IDS is a comma-separated allowlist of recurring Stripe Price
+IDs that can be sold from /admin/billing. Each Price must have an expanded active
+Stripe Product and a fixed unit amount.
+
+Plan entitlements are read from Product metadata. Price metadata can override the
+same key for a specific billing interval or price.
+
+Required metadata:
+
+- stems_plan_key
+- stems_max_works
+- stems_max_storage_bytes
+- stems_max_custom_domains
+- stems_max_members
+- stems_allow_custom_domains
+- stems_allow_white_label
+
+Numeric limits must be a non-negative integer or the literal value unlimited.
+
+Optional metadata:
+
+- stems_trial_days: integer from 0 through 365; defaults to 0
+- stems_features: comma-separated display labels used by the billing UI
+
+Example Product metadata:
+
+stems_plan_key=studio
+stems_max_works=100
+stems_max_storage_bytes=536870912000
+stems_max_custom_domains=5
+stems_max_members=10
+stems_allow_custom_domains=true
+stems_allow_white_label=true
+stems_trial_days=14
+stems_features=Private originals,Custom domains,Team access
+
+Removing a Price ID from STRIPE_BILLING_PRICE_IDS prevents new subscriptions to
+that price. Existing subscriptions using an archived or no-longer-public Price
+remain syncable so cancellation, payment failure, and historical entitlements do
+not break when a plan is retired.
+
+### Subscription Checkout
+
+An OWNER or ADMIN starts a new subscription from /admin/billing.
+
+The application creates or reuses a dedicated platform Stripe Customer for the
+tenant, then opens a Stripe Checkout Session in subscription mode with:
+
+- one allowlisted recurring Price
+- client_reference_id = tenant ID
+- tenant and billing Price metadata on both Checkout and Subscription
+- the plan's configured trial_period_days, when greater than zero
+
+The local subscription is not considered active merely because the browser
+returns from Checkout. Access changes only after signed Stripe Billing webhook
+events synchronize the Subscription.
+
+### Customer portal, upgrades, and downgrades
+
+Existing subscribers use a Stripe Billing customer portal session created by the
+server. Configure the Stripe portal on the platform account, not on any connected
+merchant account.
+
+To allow upgrades or downgrades, the Stripe customer portal configuration must
+include the Products and Prices customers are permitted to switch between.
+
+STRIPE_BILLING_PORTAL_CONFIGURATION_ID is optional. When set, the application
+launches that specific portal configuration. Otherwise Stripe's default portal
+configuration is used.
+
+Plan changes made in the portal are authoritative only after Stripe sends
+customer.subscription.updated. The app then snapshots the new Price and
+entitlements onto TenantSubscription.
+
+### Subscription status and access
+
+TenantSubscription mirrors the relevant Stripe lifecycle states:
+
+- UNSUBSCRIBED
+- TRIALING
+- ACTIVE
+- PAST_DUE
+- CANCELED
+- UNPAID
+- INCOMPLETE
+- INCOMPLETE_EXPIRED
+- PAUSED
+- GRANDFATHERED
+
+TRIALING, ACTIVE, and GRANDFATHERED allow new billable resource creation.
+
+PAST_DUE receives a bounded grace period controlled by
+SAAS_PAST_DUE_GRACE_DAYS, default 7 and capped at 30. During the grace window,
+resource creation remains available. After the grace period, new billable
+consumption is blocked until Stripe reports a restored active state.
+
+Existing public storefront content remains online when billing is inactive. PR 16
+does not delete Works, revoke customers' purchased licenses, disable downloads,
+or take a tenant's public catalog offline because the SaaS bill is late.
+
+### Snapshotted entitlements
+
+Every synchronized subscription stores the exact plan state locally:
+
+- Price ID
+- Product ID
+- plan key and display name
+- currency and unit amount
+- billing interval and interval count
+- trial and billing-period dates
+- cancel-at-period-end state
+- maximum Works
+- maximum storage bytes
+- maximum custom domains
+- maximum team members
+- custom-domain entitlement
+- white-label entitlement
+- feature labels
+
+Later edits to Stripe Product metadata do not retroactively change a tenant until
+a Stripe subscription synchronization occurs.
+
+### Usage accounting and enforcement
+
+/admin/billing shows current consumption against the snapshotted plan.
+
+Usage currently includes:
+
+Works
+: non-ARCHIVED Works.
+
+Storage
+: tracked AudioAsset bytes, ArtworkAsset bytes, ThemeAsset bytes, and generated
+  DownloadPackage bytes.
+
+Custom domains
+: tenant-created domain claims. Managed platform/local development hostnames are
+  excluded.
+
+Team members
+: TenantMembership rows. PR 19's invitation flow can call the already implemented
+  assertTenantCanAddMember gate before adding members.
+
+Enforcement is integrated into:
+
+- new Work creation
+- source/master/stem upload intents
+- artwork upload intents
+- logo/favicon upload intents
+- white-label theme changes
+- custom-domain registration
+
+If a tenant changes to a lower plan while current usage exceeds a new limit,
+existing data is preserved and remains readable. New creation for that constrained
+resource is blocked until usage returns within the plan or the plan is upgraded.
+
+### Stripe Billing webhook
+
+Configure a separate Stripe event destination at:
+
+/api/stripe/billing/webhook
+
+with:
+
+STRIPE_BILLING_WEBHOOK_SECRET
+
+The Billing endpoint handles:
+
+- checkout.session.completed when mode=subscription
+- customer.subscription.created
+- customer.subscription.updated
+- customer.subscription.deleted
+
+Subscription webhooks are the authority for trials, upgrades, downgrades,
+cancellation, and payment-status access changes.
+
+### Scoped webhook idempotency
+
+PR 16 introduces StripeWebhookEvent with an explicit scope:
+
+- PAYMENTS
+- CONNECT
+- BILLING
+
+The scope is part of the unique key with Stripe event ID.
+
+This replaces the active use of the older PaymentWebhookEvent ledger and prevents
+a Stripe event delivered to more than one configured endpoint from causing one
+subsystem to suppress processing in another. The payment, Connect, and Billing
+webhook endpoints now use separate idempotency scopes.
+
+### Configuration
+
+- STRIPE_SECRET_KEY
+- STRIPE_BILLING_WEBHOOK_SECRET
+- STRIPE_BILLING_PRICE_IDS
+- STRIPE_BILLING_PORTAL_CONFIGURATION_ID (optional)
+- SAAS_PAST_DUE_GRACE_DAYS (default 7)
+
+STRIPE_SECRET_KEY remains the platform Stripe account key. SaaS Billing sessions
+and portal sessions are not created on tenant Connect accounts.
+
+### Validation
+
+CI adds unit tests for:
+
+- Price allowlist normalization
+- active/trialing/grandfathered access
+- past-due grace behavior
+- fail-closed inactive statuses
+
+A PostgreSQL SaaS-billing integration test proves:
+
+- new tenants begin UNSUBSCRIBED
+- unsubscribed tenants cannot create billable resources
+- Work limits are enforced
+- storage accounting and limits are enforced
+- custom-domain limits are enforced
+- white-label and custom-domain feature entitlements are enforced
+- past-due access works only inside the grace period
+- Stripe webhook IDs are isolated by PAYMENTS vs BILLING scope
+
+The pre-existing custom-domain integration test now provisions an active domain
+entitlement explicitly, so it continues to validate the domain subsystem under
+the new SaaS gate.
+
+All prior migrations, unit tests, asset queue, CMS, navigation, themes, custom
+domains, Stripe Connect, licensing, checkout/orders, secure delivery, ZIP
+packages, FFmpeg/media, TypeScript, and production-build gates remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.
