@@ -4,6 +4,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { Readable } from "node:stream";
 
@@ -98,6 +99,50 @@ export async function createPrivateUploadUrl(input: {
   return getSignedUrl(getStorageClient(), command, {
     expiresIn: input.expiresInSeconds ?? 15 * 60,
   });
+}
+
+export async function createPrivateDownloadUrl(input: {
+  storageKey: string;
+  fileName: string;
+  contentType?: string | null;
+  expiresInSeconds?: number;
+}) {
+  const config = getStorageConfig();
+  const safeName = input.fileName.replace(/[\r\n"]/g, "_").slice(0, 220) || "download";
+  const command = new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: normalizeStorageKey(input.storageKey),
+    ResponseContentDisposition: 'attachment; filename="' + safeName + '"',
+    ResponseContentType: input.contentType || undefined,
+  });
+
+  return getSignedUrl(getStorageClient(), command, {
+    expiresIn: input.expiresInSeconds ?? Math.max(
+      60,
+      Number(process.env.DOWNLOAD_URL_TTL_SECONDS) || 5 * 60,
+    ),
+  });
+}
+
+export async function uploadPrivateStream(input: {
+  storageKey: string;
+  body: Readable;
+  contentType: string;
+}) {
+  const config = getStorageConfig();
+  const upload = new Upload({
+    client: getStorageClient(),
+    params: {
+      Bucket: config.bucket,
+      Key: normalizeStorageKey(input.storageKey),
+      Body: input.body,
+      ContentType: input.contentType,
+    },
+    queueSize: 4,
+    partSize: 10 * 1024 * 1024,
+    leavePartsOnError: false,
+  });
+  return upload.done();
 }
 
 export async function headPrivateObject(storageKey: string) {
