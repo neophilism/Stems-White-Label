@@ -41,6 +41,28 @@ DRAFT -> PROCESSING -> READY -> PUBLISHED -> ARCHIVED
 Supported transitions also allow a published Work to return to READY for
 unpublishing and an archived Work to return to DRAFT for restoration.
 
+## Luxury storefront
+
+The public storefront is deliberately not a marketplace UI.
+
+It now provides:
+
+- a full-screen editorial entrance for the tenant
+- a display-case visual language for source material
+- a featured published Work selected from tenant catalog data
+- metadata and arbitrary StemGroup summaries
+- selected-Work presentation
+- published Collection navigation
+- dedicated Collection pages
+- a licensing-philosophy section
+- bespoke empty-catalog states
+- responsive desktop, tablet, and mobile layouts
+- reduced-motion support
+
+No demo Works are hard-coded into the storefront. Public content comes from the
+tenant's published catalog. Until artwork storage is introduced, Work visuals use
+a deterministic typographic jacket generated from catalog metadata.
+
 ## Local setup
 
 1. Copy .env.example to .env.
