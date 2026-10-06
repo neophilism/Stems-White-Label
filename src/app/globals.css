@@ -4123,3 +4123,189 @@ body[data-theme-preset="GALLERY"]::before {
   color-scheme: dark;
   font-family: var(--sans);
 }
+
+
+/* Custom domain administration */
+
+.domain-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: end;
+  max-width: 760px;
+}
+
+.domain-list {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.domain-card {
+  margin: 0;
+}
+
+.domain-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.domain-card__header h2 {
+  margin: 0.35rem 0 0;
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3.5vw, 3rem);
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.domain-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 1.5rem;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.domain-status-grid > div {
+  display: grid;
+  gap: 0.55rem;
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.domain-status-grid span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.domain-status {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.domain-status--verified,
+.domain-status--ready {
+  color: #9ab797;
+}
+
+.domain-status--pending {
+  color: var(--metal);
+}
+
+.domain-status--failed {
+  color: #c58b7d;
+}
+
+.domain-dns-instructions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.domain-dns-instructions > div {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.domain-dns-instructions dl {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 0.55rem 0.8rem;
+  margin: 0.8rem 0 0;
+}
+
+.domain-dns-instructions dt {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.domain-dns-instructions dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.domain-dns-instructions code {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.domain-dns-instructions p:not(.eyebrow) {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.domain-card__error {
+  border-left: 2px solid #c58b7d;
+  margin-top: 1.3rem;
+  padding-left: 0.9rem;
+  color: #c9a096;
+  line-height: 1.55;
+}
+
+.domain-card__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-end;
+  border-top: 1px solid var(--line);
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+
+.domain-card__footer > div:first-child {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.domain-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  justify-content: flex-end;
+}
+
+.cms-danger-button {
+  border: 1px solid rgba(197, 139, 125, 0.5);
+  background: transparent;
+  color: #c58b7d;
+  cursor: pointer;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 820px) {
+  .domain-dns-instructions,
+  .domain-status-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .domain-add-form {
+    grid-template-columns: 1fr;
+  }
+
+  .domain-card__header,
+  .domain-card__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .domain-card__actions {
+    justify-content: flex-start;
+  }
+}

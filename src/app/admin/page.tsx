@@ -31,6 +31,20 @@ export default async function AdminPage() {
       </section>
 
       <section className="cms-panel">
+        <p className="eyebrow">Domains & HTTPS</p>
+        <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+          Custom domains
+        </h2>
+        <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+          Register branded hostnames, verify DNS ownership and platform routing,
+          confirm TLS readiness, and choose the tenant's primary domain.
+        </p>
+        <Link className="cms-primary-button" href="/admin/domains">
+          Manage Domains
+        </Link>
+      </section>
+
+      <section className="cms-panel">
         <p className="eyebrow">Catalog</p>
         <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
           Source-material CMS

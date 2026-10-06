@@ -165,6 +165,24 @@ enum ThemeAssetStatus {
   FAILED
 }
 
+enum DomainOwnershipStatus {
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum DomainRoutingStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum DomainTlsStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -244,16 +262,27 @@ model Tenant {
 }
 
 model TenantDomain {
-  id         String   @id @default(cuid())
-  tenantId   String
-  hostname   String   @unique
-  isPrimary  Boolean  @default(false)
-  verifiedAt DateTime?
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                String                @id @default(cuid())
+  tenantId          String
+  hostname          String                @unique
+  isPrimary         Boolean               @default(false)
+  verificationToken String?               @unique
+  ownershipStatus   DomainOwnershipStatus @default(PENDING)
+  routingStatus     DomainRoutingStatus   @default(PENDING)
+  tlsStatus         DomainTlsStatus       @default(PENDING)
+  verifiedAt        DateTime?
+  routingVerifiedAt DateTime?
+  tlsVerifiedAt     DateTime?
+  claimExpiresAt    DateTime?
+  lastCheckedAt     DateTime?
+  lastError         String?               @db.Text
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, ownershipStatus, routingStatus, tlsStatus])
+  @@index([claimExpiresAt])
 }
 
 model TenantMembership {

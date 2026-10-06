@@ -19,12 +19,26 @@ async function main() {
   for (const hostname of hostnames) {
     await prisma.tenantDomain.upsert({
       where: { hostname },
-      update: { tenantId: tenant.id },
+      update: {
+        tenantId: tenant.id,
+        ownershipStatus: "VERIFIED",
+        routingStatus: "READY",
+        tlsStatus: "READY",
+        verifiedAt: new Date(),
+        routingVerifiedAt: new Date(),
+        tlsVerifiedAt: new Date(),
+        claimExpiresAt: null,
+      },
       create: {
         tenantId: tenant.id,
         hostname,
         isPrimary: hostname === "stems.unsealedrecords.com",
-        verifiedAt: hostname.includes("unsealedrecords.com") ? null : new Date(),
+        ownershipStatus: "VERIFIED",
+        routingStatus: "READY",
+        tlsStatus: "READY",
+        verifiedAt: new Date(),
+        routingVerifiedAt: new Date(),
+        tlsVerifiedAt: new Date(),
       },
     });
   }

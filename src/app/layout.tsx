@@ -6,14 +6,19 @@ import {
   getThemePreset,
   themeCssVariables,
 } from "@/lib/theme";
-import { getCurrentTenant } from "@/lib/tenant";
+import { getCurrentTenant, getPrimaryTenantDomain } from "@/lib/tenant";
 
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getCurrentTenant();
   const name = tenant?.name ?? "Stems White Label";
-  const theme = tenant ? await getResolvedTenantTheme(tenant.id) : null;
+  const [theme, primaryDomain] = tenant
+    ? await Promise.all([
+        getResolvedTenantTheme(tenant.id),
+        getPrimaryTenantDomain(tenant.id),
+      ])
+    : [null, null];
 
   return {
     title: {
@@ -23,6 +28,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description:
       "Masters, stem groups, and source material presented in a bespoke artist-owned archive.",
     icons: theme?.faviconAssetId ? { icon: "/api/theme/favicon" } : undefined,
+    metadataBase: primaryDomain
+      ? new URL("https://" + primaryDomain.hostname)
+      : undefined,
   };
 }
 

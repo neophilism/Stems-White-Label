@@ -4,24 +4,21 @@ import { cache } from "react";
 import { db } from "@/lib/db";
 
 export function normalizeHostname(value: string) {
-  return value.trim().toLowerCase().replace(/:\d+$/, "");
+  return value
+    .split(",")[0]!
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "")
+    .replace(/\.$/, "");
 }
 
-export const resolveTenantByHostname = cache(async (hostname: string) => {
+export async function resolveTenantByHostnameDirect(hostname: string) {
   const normalized = normalizeHostname(hostname);
-
-  const domain = await db.tenantDomain.findUnique({
-    where: { hostname: normalized },
-    include: { tenant: true },
-  });
-
-  if (domain?.tenant.status === "ACTIVE") {
-    return domain.tenant;
-  }
 
   if (
     normalized === "localhost" ||
     normalized === "127.0.0.1" ||
+    normalized === "::1" ||
     normalized.endsWith(".localhost")
   ) {
     const slug = process.env.DEFAULT_TENANT_SLUG ?? "unsealed-records";
@@ -30,15 +27,45 @@ export const resolveTenantByHostname = cache(async (hostname: string) => {
     });
   }
 
+  const domain = await db.tenantDomain.findUnique({
+    where: { hostname: normalized },
+    include: { tenant: true },
+  });
+
+  if (
+    domain?.tenant.status === "ACTIVE" &&
+    domain.ownershipStatus === "VERIFIED" &&
+    domain.routingStatus === "READY" &&
+    domain.tlsStatus === "READY"
+  ) {
+    return domain.tenant;
+  }
+
   return null;
-});
+}
+
+export const resolveTenantByHostname = cache(resolveTenantByHostnameDirect);
 
 export async function getCurrentTenant() {
   const requestHeaders = await headers();
-  const forwardedHost = requestHeaders.get("x-forwarded-host");
-  const host = forwardedHost ?? requestHeaders.get("host");
+  const host = process.env.TRUST_X_FORWARDED_HOST === "true"
+    ? requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host")
+    : requestHeaders.get("host");
 
   if (!host) return null;
-
   return resolveTenantByHostname(host);
 }
+
+
+export const getPrimaryTenantDomain = cache(async (tenantId: string) => {
+  return db.tenantDomain.findFirst({
+    where: {
+      tenantId,
+      isPrimary: true,
+      ownershipStatus: "VERIFIED",
+      routingStatus: "READY",
+      tlsStatus: "READY",
+    },
+    select: { hostname: true },
+  });
+});
