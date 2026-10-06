@@ -88,7 +88,8 @@ function date(value: string | null) {
 }
 
 function usagePercent(used: number | bigint, limit: number | bigint | null) {
-  if (limit == null || BigInt(limit) === 0n) return null;
+  if (limit == null) return null;
+  if (BigInt(limit) === 0n) return BigInt(used) > 0n ? 100 : 0;
   return Math.min(100, Number((BigInt(used) * 10000n) / BigInt(limit)) / 100);
 }
 
