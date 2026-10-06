@@ -4,6 +4,7 @@ type ListeningRoomProps = {
   workSlug: string;
   durationMs: number | null;
   hasFullMix: boolean;
+  revealSequenceName: string | null;
   sourceGroups: Array<{
     id: string;
     label: string;
@@ -15,6 +16,7 @@ export function ListeningRoom({
   workSlug,
   durationMs,
   hasFullMix,
+  revealSequenceName,
   sourceGroups,
 }: ListeningRoomProps) {
   return (
@@ -32,6 +34,7 @@ export function ListeningRoom({
       <StemPlayer
         durationMs={durationMs}
         hasFullMix={hasFullMix}
+        revealSequenceName={revealSequenceName}
         sourceGroups={sourceGroups}
         workSlug={workSlug}
       />
