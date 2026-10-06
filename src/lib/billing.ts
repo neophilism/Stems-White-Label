@@ -102,9 +102,21 @@ function metadataTrialDays(metadata: Record<string, string>) {
   return days;
 }
 
-export function parseBillingPlan(price: Stripe.Price): BillingPlan {
-  if (!price.active || price.type !== "recurring" || !price.recurring) {
-    throw new Error("Configured SaaS price must be an active recurring Stripe Price.");
+export function parseBillingPlan(
+  price: Stripe.Price,
+  options: { requireActive?: boolean } = {},
+): BillingPlan {
+  const requireActive = options.requireActive !== false;
+  if (
+    price.type !== "recurring" ||
+    !price.recurring ||
+    (requireActive && !price.active)
+  ) {
+    throw new Error(
+      requireActive
+        ? "Configured SaaS price must be an active recurring Stripe Price."
+        : "Subscription price must be recurring.",
+    );
   }
   if (price.unit_amount == null || price.unit_amount < 0) {
     throw new Error("Configured SaaS price must use a fixed unit amount.");
@@ -114,7 +126,7 @@ export function parseBillingPlan(price: Stripe.Price): BillingPlan {
   }
 
   const product = price.product as Stripe.Product;
-  if (!product.active) {
+  if (requireActive && !product.active) {
     throw new Error("Configured SaaS product is inactive.");
   }
 
@@ -158,11 +170,14 @@ export function parseBillingPlan(price: Stripe.Price): BillingPlan {
   };
 }
 
-async function retrieveBillingPlan(priceId: string) {
+async function retrieveBillingPlan(
+  priceId: string,
+  options: { requireActive?: boolean } = {},
+) {
   const price = await getStripe().prices.retrieve(priceId, {
     expand: ["product"],
   });
-  return parseBillingPlan(price);
+  return parseBillingPlan(price, options);
 }
 
 export async function getBillingPlan(priceId: string) {
@@ -357,7 +372,9 @@ export async function syncStripeSubscription(
   const item = subscription.items.data[0];
   if (!item) throw new Error("Stripe subscription has no subscription item.");
 
-  const plan = await retrieveBillingPlan(item.price.id);
+  const plan = await retrieveBillingPlan(item.price.id, {
+    requireActive: false,
+  });
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
