@@ -60,6 +60,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
       (asset) => asset.kind === "PREVIEW" && Boolean(asset.storageKey),
     ),
   }));
+  const revealSequence = work.revealSequences[0] ?? null;
 
   return (
     <>
@@ -108,6 +109,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
           <ListeningRoom
             durationMs={work.durationMs}
             hasFullMix={hasFullMix}
+            revealSequenceName={revealSequence?.name ?? null}
             sourceGroups={playerSourceGroups}
             workSlug={work.slug}
           />
