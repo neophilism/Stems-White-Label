@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import type {
   ThemeDensity,
   ThemeFooterStyle,
@@ -234,8 +236,9 @@ function color(value: unknown, fallback: string) {
   return normalized;
 }
 
-function text(value: unknown, max: number) {
-  if (value == null || value === "") return null;
+function text(value: unknown, max: number, fallback: string | null) {
+  if (value === undefined) return fallback;
+  if (value === null || value === "") return null;
   if (typeof value !== "string") throw new Error("Theme text must be a string.");
   return value.trim().slice(0, max) || null;
 }
@@ -296,11 +299,11 @@ export function normalizeThemeDraft(input: ThemeDraft, current?: ThemeTokens): T
     cornerRadiusPx: radius,
     artworkAspect,
     motionEnabled: input.motionEnabled == null ? base.motionEnabled : Boolean(input.motionEnabled),
-    logoText: text(input.logoText, 16) ?? base.logoText,
-    heroEyebrow: text(input.heroEyebrow, 120) ?? base.heroEyebrow,
-    heroHeadline: text(input.heroHeadline, 180) ?? base.heroHeadline,
-    heroSubheadline: text(input.heroSubheadline, 180) ?? base.heroSubheadline,
-    footerStatement: text(input.footerStatement, 600) ?? base.footerStatement,
+    logoText: text(input.logoText, 16, base.logoText),
+    heroEyebrow: text(input.heroEyebrow, 120, base.heroEyebrow),
+    heroHeadline: text(input.heroHeadline, 180, base.heroHeadline),
+    heroSubheadline: text(input.heroSubheadline, 180, base.heroSubheadline),
+    footerStatement: text(input.footerStatement, 600, base.footerStatement),
   };
 
   const isManualOverride =
@@ -311,7 +314,7 @@ export function normalizeThemeDraft(input: ThemeDraft, current?: ThemeTokens): T
   return resolved;
 }
 
-export async function getResolvedTenantTheme(tenantId: string) {
+export const getResolvedTenantTheme = cache(async (tenantId: string) => {
   const stored = await db.tenantTheme.findUnique({
     where: { tenantId },
     include: {
@@ -355,6 +358,14 @@ export async function getResolvedTenantTheme(tenantId: string) {
     faviconAssetId:
       stored?.faviconAsset?.status === "READY" ? stored.faviconAsset.id : null,
   };
+});
+
+function colorScheme(hex: string) {
+  const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
+  const g = Number.parseInt(hex.slice(3, 5), 16) / 255;
+  const b = Number.parseInt(hex.slice(5, 7), 16) / 255;
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luminance > 0.6 ? "light" : "dark";
 }
 
 export function themeCssVariables(theme: Awaited<ReturnType<typeof getResolvedTenantTheme>>) {
@@ -370,6 +381,9 @@ export function themeCssVariables(theme: Awaited<ReturnType<typeof getResolvedTe
     "--muted": theme.muted,
     "--metal": theme.accent,
     "--metal-soft": theme.accentSoft,
+    "--line": "color-mix(in srgb, " + theme.ink + " 16%, transparent)",
+    "--line-strong": "color-mix(in srgb, " + theme.ink + " 32%, transparent)",
+    "--theme-color-scheme": colorScheme(theme.background),
     "--theme-radius": String(theme.cornerRadiusPx) + "px",
     "--artwork-aspect": theme.artworkAspect,
     "--theme-spacing-scale": spacing,
