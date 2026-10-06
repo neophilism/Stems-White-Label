@@ -55,12 +55,12 @@ ALTER TABLE "TenantFeatureFlag"
 ALTER TABLE "PlatformAuditLog"
   ADD CONSTRAINT "PlatformAuditLog_actorUserId_fkey"
   FOREIGN KEY ("actorUserId") REFERENCES "User"("id")
-  ON DELETE SET NULL ON UPDATE CASCADE;
+  ON DELETE RESTRICT ON UPDATE CASCADE;
 
 ALTER TABLE "PlatformAuditLog"
   ADD CONSTRAINT "PlatformAuditLog_tenantId_fkey"
   FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id")
-  ON DELETE SET NULL ON UPDATE CASCADE;
+  ON DELETE RESTRICT ON UPDATE CASCADE;
 
 ALTER TABLE "TenantFeatureFlag"
   ADD CONSTRAINT "TenantFeatureFlag_key_check"
