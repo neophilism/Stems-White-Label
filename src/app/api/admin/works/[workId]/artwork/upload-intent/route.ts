@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
@@ -32,30 +34,16 @@ export async function POST(request: Request, { params }: RouteProps) {
       sizeBytes: Number(body?.sizeBytes),
     });
 
-    const artwork = await db.artworkAsset.upsert({
+    const existing = await db.artworkAsset.findUnique({
       where: { workId },
-      create: {
-        tenantId: access.tenant.id,
-        workId,
-        status: "PENDING",
-        fileName: input.fileName,
-        mimeType: input.mimeType,
-        sizeBytes: BigInt(input.sizeBytes),
-      },
-      update: {
-        status: "PENDING",
-        fileName: input.fileName,
-        mimeType: input.mimeType,
-        sizeBytes: BigInt(input.sizeBytes),
-        storageKey: null,
-      },
       select: { id: true },
     });
+    const assetId = existing?.id ?? randomUUID();
 
     const storageKey = artworkStorageKey({
       tenantId: access.tenant.id,
       workId,
-      assetId: artwork.id,
+      assetId,
       extension: input.extension,
     });
 
@@ -65,9 +53,26 @@ export async function POST(request: Request, { params }: RouteProps) {
       contentLength: input.sizeBytes,
     });
 
-    await db.artworkAsset.update({
-      where: { id: artwork.id },
-      data: { storageKey },
+    const artwork = await db.artworkAsset.upsert({
+      where: { workId },
+      create: {
+        id: assetId,
+        tenantId: access.tenant.id,
+        workId,
+        status: "PENDING",
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        sizeBytes: BigInt(input.sizeBytes),
+        storageKey,
+      },
+      update: {
+        status: "PENDING",
+        fileName: input.fileName,
+        mimeType: input.mimeType,
+        sizeBytes: BigInt(input.sizeBytes),
+        storageKey,
+      },
+      select: { id: true },
     });
 
     return NextResponse.json({
