@@ -32,6 +32,7 @@ export async function GET() {
       headers: {
         "Content-Type": object.ContentType || asset.mimeType,
         "Cache-Control": "public, max-age=300, stale-while-revalidate=3600",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {
