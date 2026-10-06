@@ -60,7 +60,7 @@ export async function buildPlayerManifest(tenantId: string, workSlug: string) {
           storageKey: { not: null },
           stemGroupId: null,
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
         take: 1,
         select: {
           id: true,
@@ -99,7 +99,7 @@ export async function buildPlayerManifest(tenantId: string, workSlug: string) {
               status: "READY",
               storageKey: { not: null },
             },
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "desc" },
             take: 1,
             select: {
               id: true,
