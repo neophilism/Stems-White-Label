@@ -102,3 +102,21 @@ SELECT
   CURRENT_TIMESTAMP
 FROM "Tenant"
 ON CONFLICT ("tenantId") DO NOTHING;
+
+
+CREATE TYPE "StripeWebhookScope" AS ENUM ('PAYMENTS','CONNECT','BILLING');
+
+CREATE TABLE "StripeWebhookEvent" (
+  "id" TEXT NOT NULL,
+  "scope" "StripeWebhookScope" NOT NULL,
+  "providerEventId" TEXT NOT NULL,
+  "eventType" TEXT NOT NULL,
+  "processedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "StripeWebhookEvent_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX "StripeWebhookEvent_scope_providerEventId_key"
+  ON "StripeWebhookEvent"("scope","providerEventId");
+CREATE INDEX "StripeWebhookEvent_scope_processedAt_idx"
+  ON "StripeWebhookEvent"("scope","processedAt");
