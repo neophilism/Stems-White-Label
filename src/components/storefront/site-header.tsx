@@ -16,8 +16,8 @@ export function SiteHeader({ tenantName }: SiteHeaderProps) {
         </Link>
 
         <nav className="site-nav" aria-label="Primary navigation">
-          <Link href="/#archive">Archive</Link>
-          <Link href="/#collections">Collections</Link>
+          <Link href="/archive">Archive</Link>
+          <Link href="/collections">Collections</Link>
           <Link href="/#licensing">Licensing</Link>
           <Link href="/cart">Cart</Link>
           <Link href="/library">Library</Link>
