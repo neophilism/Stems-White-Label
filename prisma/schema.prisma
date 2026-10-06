@@ -20,6 +20,35 @@ enum TenantStatus {
   SUSPENDED
 }
 
+enum WorkStatus {
+  DRAFT
+  PROCESSING
+  READY
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CollectionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AudioAssetKind {
+  MASTER
+  STEM
+  PREVIEW
+  OTHER
+}
+
+enum AudioAssetStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+  ARCHIVED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -71,15 +100,19 @@ model VerificationToken {
 }
 
 model Tenant {
-  id          String             @id @default(cuid())
-  name        String
-  slug        String             @unique
-  status      TenantStatus       @default(ACTIVE)
-  isSeed      Boolean            @default(false)
-  domains     TenantDomain[]
-  memberships TenantMembership[]
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id           String             @id @default(cuid())
+  name         String
+  slug         String             @unique
+  status       TenantStatus       @default(ACTIVE)
+  isSeed       Boolean            @default(false)
+  domains      TenantDomain[]
+  memberships  TenantMembership[]
+  artists      Artist[]
+  collections  Collection[]
+  works        Work[]
+  audioAssets  AudioAsset[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 }
 
 model TenantDomain {
@@ -108,4 +141,146 @@ model TenantMembership {
   @@unique([tenantId, userId])
   @@index([userId])
   @@index([tenantId])
+}
+
+model Artist {
+  id           String       @id @default(cuid())
+  tenantId     String
+  slug         String
+  name         String
+  displayName  String?
+  bio          String?      @db.Text
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  primaryWorks Work[]       @relation("PrimaryArtistWorks")
+  credits      WorkCredit[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  tenantId    String
+  slug        String
+  title       String
+  description String?          @db.Text
+  status      CollectionStatus @default(DRAFT)
+  publishedAt DateTime?
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  works       CollectionWork[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status])
+}
+
+model Work {
+  id              String           @id @default(cuid())
+  tenantId        String
+  primaryArtistId String?
+  slug            String
+  title           String
+  subtitle        String?
+  description     String?          @db.Text
+  catalogNumber   String?
+  bpm             Decimal?         @db.Decimal(6, 2)
+  musicalKey      String?
+  durationMs      Int?
+  status          WorkStatus       @default(DRAFT)
+  publishedAt     DateTime?
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  primaryArtist   Artist?          @relation("PrimaryArtistWorks", fields: [primaryArtistId], references: [id], onDelete: SetNull)
+  credits         WorkCredit[]
+  collections     CollectionWork[]
+  stemGroups      StemGroup[]
+  audioAssets     AudioAsset[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([tenantId, slug])
+  @@unique([tenantId, catalogNumber])
+  @@index([tenantId, status])
+  @@index([primaryArtistId])
+}
+
+model WorkCredit {
+  id          String   @id @default(cuid())
+  workId      String
+  artistId    String?
+  role        String
+  displayName String
+  position    Int      @default(0)
+  work        Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  artist      Artist?  @relation(fields: [artistId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([workId, position])
+  @@index([artistId])
+}
+
+model CollectionWork {
+  collectionId String
+  workId       String
+  position     Int        @default(0)
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  work         Work       @relation(fields: [workId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  @@id([collectionId, workId])
+  @@index([collectionId, position])
+  @@index([workId])
+}
+
+model StemGroup {
+  id           String       @id @default(cuid())
+  workId       String
+  parentId     String?
+  slug         String
+  label        String
+  description  String?      @db.Text
+  position     Int          @default(0)
+  isFeatured   Boolean      @default(false)
+  work         Work         @relation(fields: [workId], references: [id], onDelete: Cascade)
+  parent       StemGroup?   @relation("StemGroupHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     StemGroup[]  @relation("StemGroupHierarchy")
+  audioAssets  AudioAsset[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([workId, slug])
+  @@index([workId, position])
+  @@index([parentId])
+}
+
+model AudioAsset {
+  id           String           @id @default(cuid())
+  tenantId     String
+  workId       String
+  stemGroupId  String?
+  kind         AudioAssetKind
+  status       AudioAssetStatus @default(PENDING)
+  label        String?
+  fileName     String
+  storageKey   String?
+  mimeType     String?
+  sizeBytes    BigInt?
+  durationMs   Int?
+  sampleRateHz Int?
+  bitDepth     Int?
+  channels     Int?
+  checksumSha256 String?
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  work         Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
+  stemGroup    StemGroup?       @relation(fields: [stemGroupId], references: [id], onDelete: SetNull)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([tenantId, storageKey])
+  @@index([tenantId, kind, status])
+  @@index([workId])
+  @@index([stemGroupId])
 }

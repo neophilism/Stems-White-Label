@@ -29,7 +29,26 @@ async function main() {
     });
   }
 
-  console.log("Seeded tenant: " + tenant.name + " (" + tenant.slug + ")");
+  await prisma.artist.upsert({
+    where: {
+      tenantId_slug: {
+        tenantId: tenant.id,
+        slug: "unsealed-records",
+      },
+    },
+    update: {
+      name: "Unsealed Records",
+      displayName: "Unsealed Records",
+    },
+    create: {
+      tenantId: tenant.id,
+      slug: "unsealed-records",
+      name: "Unsealed Records",
+      displayName: "Unsealed Records",
+    },
+  });
+
+  console.log("Seeded tenant and catalog identity: " + tenant.name);
 }
 
 main()

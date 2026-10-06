@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { requireTenantPermission } from "@/lib/access";
 
 export default async function AdminPage() {
@@ -16,8 +18,10 @@ export default async function AdminPage() {
           Role: <strong>{membership.role}</strong>
         </p>
         <p style={{ color: "var(--muted)" }}>
-          Catalog management is intentionally reserved for PR 2 and later.
+          The core catalog domain is active. Publishing and editing interfaces
+          arrive in later milestones.
         </p>
+        <Link href="/admin/catalog">View catalog foundation</Link>
       </section>
     </main>
   );
