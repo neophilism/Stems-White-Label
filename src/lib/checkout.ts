@@ -101,6 +101,24 @@ export async function quoteLicenseProducts(tenantId: string, rawIds: unknown) {
   };
 }
 
+export function assertAcceptedLicenseVersions(
+  quote: { items: Array<{ licenseVersionId: string }> },
+  rawAcceptedVersionIds: unknown,
+) {
+  const accepted = Array.isArray(rawAcceptedVersionIds)
+    ? new Set(rawAcceptedVersionIds.filter((id): id is string => typeof id === "string"))
+    : new Set<string>();
+
+  if (
+    accepted.size !== quote.items.length ||
+    quote.items.some((item) => !accepted.has(item.licenseVersionId))
+  ) {
+    throw new Error(
+      "License terms changed since review. Please review the current version before checkout.",
+    );
+  }
+}
+
 export async function createPendingOrder(
   tenantId: string,
   quote: Awaited<ReturnType<typeof quoteLicenseProducts>>,
