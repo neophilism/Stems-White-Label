@@ -43,6 +43,7 @@ jobs:
       - run: npm run test:navigation-integration
       - run: npm run test:theme-integration
       - run: npm run test:domains-integration
+      - run: npm run test:connect-integration
       - run: npm run test:licensing-integration
       - run: npm run test:checkout-integration
       - run: npm run test:delivery-integration
