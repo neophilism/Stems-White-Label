@@ -6,6 +6,7 @@ import {
   normalizeBuyerEmail,
   quoteLicenseProducts,
 } from "@/lib/checkout";
+import { getTenantCommerceForCheckout } from "@/lib/commerce";
 import { db } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { getCurrentTenant } from "@/lib/tenant";
@@ -21,11 +22,19 @@ export async function POST(request: Request) {
     assertAcceptedLicenseVersions(quote, body?.acceptedLicenseVersionIds);
 
     const buyerEmail = normalizeBuyerEmail(body?.buyerEmail);
+    const commerce = await getTenantCommerceForCheckout(
+      tenant.id,
+      quote.subtotalCents,
+    );
     const order = await createPendingOrder(
       tenant.id,
       quote,
       body?.termsAccepted === true,
       buyerEmail,
+      {
+        stripeConnectedAccountId: commerce.stripeAccountId,
+        platformFeeCents: commerce.platformFeeCents,
+      },
     );
 
     try {
@@ -40,12 +49,24 @@ export async function POST(request: Request) {
         metadata: {
           orderId: order.id,
           tenantId: tenant.id,
+          stripeConnectedAccountId: commerce.stripeAccountId,
+          platformFeeCents: String(commerce.platformFeeCents),
         },
         payment_intent_data: {
           receipt_email: buyerEmail ?? undefined,
+          application_fee_amount:
+            commerce.platformFeeCents > 0
+              ? commerce.platformFeeCents
+              : undefined,
+          transfer_data: {
+            destination: commerce.stripeAccountId,
+          },
+          transfer_group: "order_" + order.id,
           metadata: {
             orderId: order.id,
             tenantId: tenant.id,
+            stripeConnectedAccountId: commerce.stripeAccountId,
+            platformFeeCents: String(commerce.platformFeeCents),
           },
         },
         line_items: quote.items.map((item) => ({

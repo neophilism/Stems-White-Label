@@ -186,6 +186,10 @@ export async function createPendingOrder(
   quote: Awaited<ReturnType<typeof quoteLicenseProducts>>,
   accepted: boolean,
   buyerEmail: string | null,
+  settlement?: {
+    stripeConnectedAccountId: string;
+    platformFeeCents: number;
+  },
 ) {
   if (!accepted) throw new Error("License terms must be accepted before checkout.");
 
@@ -197,6 +201,8 @@ export async function createPendingOrder(
       subtotalCents: quote.subtotalCents,
       totalCents: quote.subtotalCents,
       buyerEmail,
+      stripeConnectedAccountId: settlement?.stripeConnectedAccountId ?? null,
+      platformFeeCents: settlement?.platformFeeCents ?? 0,
       termsAcceptedAt: new Date(),
       items: {
         create: quote.items.map((item) => ({
@@ -232,6 +238,8 @@ export async function createPendingOrder(
           tenantId,
           provider: "STRIPE",
           status: "PENDING",
+          stripeConnectedAccountId: settlement?.stripeConnectedAccountId ?? null,
+          platformFeeCents: settlement?.platformFeeCents ?? 0,
           amountCents: quote.subtotalCents,
           currency: quote.currency,
         },

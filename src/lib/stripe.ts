@@ -15,3 +15,10 @@ export function getStripeWebhookSecret() {
   if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET is not configured.");
   return secret;
 }
+
+
+export function getStripeConnectWebhookSecret() {
+  const secret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET;
+  if (!secret) throw new Error("STRIPE_CONNECT_WEBHOOK_SECRET is not configured.");
+  return secret;
+}
