@@ -404,6 +404,7 @@ model AudioAsset {
   derivatives        AudioAsset[]     @relation("AudioAssetDerivatives")
   processingJobs     ProcessingJob[]
   downloadEntitlements DownloadEntitlement[]
+  orderItemAssets OrderItemAsset[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -586,12 +587,12 @@ model OrderItem {
   seatLimit                  Int?
   projectLimit               Int?
   selectedStemLabelsSnapshot Json?
-  includedAssetIdsSnapshot    Json?
   order                      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   licenseProduct             LicenseProduct @relation(fields: [licenseProductId], references: [id], onDelete: Restrict)
   licenseVersion             LicenseVersion @relation(fields: [licenseVersionId], references: [id], onDelete: Restrict)
   work                       Work            @relation(fields: [workId], references: [id], onDelete: Restrict)
   purchaseLicense            PurchaseLicense?
+  deliverableAssets          OrderItemAsset[]
   createdAt                  DateTime        @default(now())
 
   @@index([orderId])
@@ -717,4 +718,19 @@ model DownloadPackage {
 
   @@index([status, runAfter, createdAt])
   @@index([tenantId, status])
+}
+
+
+model OrderItemAsset {
+  orderItemId      String
+  audioAssetId     String
+  fileNameSnapshot String
+  kindSnapshot     AudioAssetKind
+  stemLabelSnapshot String?
+  orderItem        OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  audioAsset       AudioAsset @relation(fields: [audioAssetId], references: [id], onDelete: Restrict)
+  createdAt        DateTime   @default(now())
+
+  @@id([orderItemId, audioAssetId])
+  @@index([audioAssetId])
 }
