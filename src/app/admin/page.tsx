@@ -17,6 +17,20 @@ export default async function AdminPage() {
       </p>
 
       <section className="cms-panel">
+        <p className="eyebrow">Brand & presentation</p>
+        <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+          White-label theme
+        </h2>
+        <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+          Manage tenant logo, favicon, typography, palette, density, hero,
+          navigation, footer treatment, and storefront theme presets.
+        </p>
+        <Link className="cms-primary-button" href="/admin/theme">
+          Open Theme Engine
+        </Link>
+      </section>
+
+      <section className="cms-panel">
         <p className="eyebrow">Catalog</p>
         <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
           Source-material CMS
