@@ -17,10 +17,15 @@ function percent(value: number) {
 }
 
 function money(cents: string, currency: string) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(Number(cents) / 100);
+  const amount = Number(cents) / 100;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(amount);
+  } catch {
+    return currency + " " + amount.toFixed(2);
+  }
 }
 
 function completionRate(starts: number, completes: number) {
