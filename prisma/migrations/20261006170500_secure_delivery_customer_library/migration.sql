@@ -1,9 +1,18 @@
 CREATE TYPE "DownloadPackageStatus" AS ENUM ('QUEUED','PROCESSING','READY','FAILED');
 
 ALTER TABLE "Customer" ADD COLUMN "userId" TEXT;
-ALTER TABLE "OrderItem" ADD COLUMN "includedAssetIdsSnapshot" JSONB;
 ALTER TABLE "PurchaseLicense" ADD COLUMN "revokedAt" TIMESTAMP(3);
 ALTER TABLE "PurchaseLicense" ADD COLUMN "revocationReason" TEXT;
+
+CREATE TABLE "OrderItemAsset" (
+  "orderItemId" TEXT NOT NULL,
+  "audioAssetId" TEXT NOT NULL,
+  "fileNameSnapshot" TEXT NOT NULL,
+  "kindSnapshot" "AudioAssetKind" NOT NULL,
+  "stemLabelSnapshot" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "OrderItemAsset_pkey" PRIMARY KEY ("orderItemId","audioAssetId")
+);
 
 CREATE TABLE "DownloadEntitlement" (
   "id" TEXT NOT NULL,
@@ -42,6 +51,7 @@ CREATE TABLE "DownloadPackage" (
 
 CREATE UNIQUE INDEX "Customer_tenantId_userId_key" ON "Customer"("tenantId","userId");
 CREATE INDEX "Customer_userId_idx" ON "Customer"("userId");
+CREATE INDEX "OrderItemAsset_audioAssetId_idx" ON "OrderItemAsset"("audioAssetId");
 CREATE UNIQUE INDEX "DownloadEntitlement_purchaseLicenseId_audioAssetId_key"
   ON "DownloadEntitlement"("purchaseLicenseId","audioAssetId");
 CREATE INDEX "DownloadEntitlement_tenantId_createdAt_idx"
@@ -59,6 +69,10 @@ CREATE INDEX "DownloadPackage_tenantId_status_idx"
 
 ALTER TABLE "Customer" ADD CONSTRAINT "Customer_userId_fkey"
   FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "OrderItemAsset" ADD CONSTRAINT "OrderItemAsset_orderItemId_fkey"
+  FOREIGN KEY ("orderItemId") REFERENCES "OrderItem"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "OrderItemAsset" ADD CONSTRAINT "OrderItemAsset_audioAssetId_fkey"
+  FOREIGN KEY ("audioAssetId") REFERENCES "AudioAsset"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "DownloadEntitlement" ADD CONSTRAINT "DownloadEntitlement_tenantId_fkey"
   FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "DownloadEntitlement" ADD CONSTRAINT "DownloadEntitlement_purchaseLicenseId_fkey"
