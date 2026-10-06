@@ -63,6 +63,31 @@ No demo Works are hard-coded into the storefront. Public content comes from the
 tenant's published catalog. Until artwork storage is introduced, Work visuals use
 a deterministic typographic jacket generated from catalog metadata.
 
+
+## Work showcase
+
+Published Works have dedicated work presentation pages at /works/[slug].
+
+The showcase includes:
+
+- a full editorial Work hero
+- linked storefront cards and featured Work entry points
+- arbitrary creator-defined source groups
+- optional nested source-group labels
+- technical provenance derived from ready AudioAsset metadata
+- ordered Work credits
+- published Collection provenance
+- optional ordered WorkSection narratives for About, Construction, Session Notes,
+  Production Notes, Provenance, or any creator-defined editorial section
+- a permanent listening-room surface reserved for the synchronized source player
+
+WorkSection uses a freeform kind instead of a fixed enum. This lets one Work expose
+extensive archival documentation while another remains intentionally minimal.
+
+The listening room truthfully reports whether a preview source is registered; it
+does not invent demo audio or expose private source files. The synchronized player
+and its audio engine are the next milestone.
+
 ## Local setup
 
 1. Copy .env.example to .env.

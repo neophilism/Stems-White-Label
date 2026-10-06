@@ -1,9 +1,12 @@
+import Link from "next/link";
+
 import { ArtworkPanel } from "@/components/storefront/artwork-panel";
 import { WorkMetadata } from "@/components/storefront/work-metadata";
 
 type FeaturedWorkProps = {
   work:
     | {
+        slug: string;
         title: string;
         subtitle: string | null;
         description: string | null;
@@ -61,16 +64,22 @@ export function FeaturedWork({ work }: FeaturedWorkProps) {
             listing, but as a composed set of musical materials.
           </p>
         )}
-        <span className="text-link text-link--disabled">
-          Work showcase opens in the next catalog layer
-        </span>
+        <Link className="text-link" href={"/works/" + work.slug}>
+          Enter the work <span aria-hidden="true">↗</span>
+        </Link>
       </div>
 
-      <ArtworkPanel
-        title={work.title}
-        catalogNumber={work.catalogNumber}
-        size="hero"
-      />
+      <Link
+        className="featured-work__artwork-link"
+        href={"/works/" + work.slug}
+        aria-label={"Open " + work.title}
+      >
+        <ArtworkPanel
+          title={work.title}
+          catalogNumber={work.catalogNumber}
+          size="hero"
+        />
+      </Link>
     </section>
   );
 }
