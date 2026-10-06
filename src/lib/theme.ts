@@ -314,7 +314,7 @@ export function normalizeThemeDraft(input: ThemeDraft, current?: ThemeTokens): T
   return resolved;
 }
 
-export const getResolvedTenantTheme = cache(async (tenantId: string) => {
+export async function resolveTenantTheme(tenantId: string) {
   const stored = await db.tenantTheme.findUnique({
     where: { tenantId },
     include: {
@@ -358,7 +358,9 @@ export const getResolvedTenantTheme = cache(async (tenantId: string) => {
     faviconAssetId:
       stored?.faviconAsset?.status === "READY" ? stored.faviconAsset.id : null,
   };
-});
+}
+
+export const getResolvedTenantTheme = cache(resolveTenantTheme);
 
 function colorScheme(hex: string) {
   const r = Number.parseInt(hex.slice(1, 3), 16) / 255;
