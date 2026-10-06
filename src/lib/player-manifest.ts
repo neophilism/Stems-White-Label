@@ -1,5 +1,8 @@
 import { db } from "@/lib/db";
-import { signedPreviewPath } from "@/lib/audio-preview-access";
+import {
+  signedPreviewPath,
+  signedWaveformPath,
+} from "@/lib/audio-preview-access";
 import type { RevealAction } from "@/lib/reveal-state";
 
 export type PlayerManifest = {
@@ -31,6 +34,7 @@ export type PlayerTrack = {
   label: string;
   url: string;
   durationMs: number | null;
+  waveformUrl: string | null;
 };
 
 export type PlayerStemTrack = PlayerTrack & {
@@ -62,6 +66,7 @@ export async function buildPlayerManifest(tenantId: string, workSlug: string) {
           id: true,
           label: true,
           durationMs: true,
+          waveformStorageKey: true,
         },
       },
       revealSequences: {
@@ -100,6 +105,7 @@ export async function buildPlayerManifest(tenantId: string, workSlug: string) {
               id: true,
               label: true,
               durationMs: true,
+              waveformStorageKey: true,
             },
           },
         },
@@ -117,6 +123,9 @@ export async function buildPlayerManifest(tenantId: string, workSlug: string) {
         label: master.label || "Full Mix",
         url: signedPreviewPath(master.id),
         durationMs: master.durationMs,
+        waveformUrl: master.waveformStorageKey
+          ? signedWaveformPath(master.id)
+          : null,
       }
     : null;
 
@@ -131,6 +140,9 @@ export async function buildPlayerManifest(tenantId: string, workSlug: string) {
         label: stem.label,
         url: signedPreviewPath(preview.id),
         durationMs: preview.durationMs,
+        waveformUrl: preview.waveformStorageKey
+          ? signedWaveformPath(preview.id)
+          : null,
       },
     ];
   });
