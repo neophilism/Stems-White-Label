@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import { db } from "../src/lib/db";
 import { createPendingOrder, quoteLicenseProducts } from "../src/lib/checkout";
+import { markOrderPaid, recordRefund } from "../src/lib/payments";
 
 async function main() {
   const suffix = Date.now().toString(36);
@@ -67,6 +68,41 @@ async function main() {
     const stored = await db.orderItem.findFirstOrThrow({ where: { orderId: order.id } });
     assert.equal(stored.unitPriceCents, 12500);
     assert.equal(stored.termsTextSnapshot, "Immutable checkout terms.");
+
+    const paid = await markOrderPaid({
+      orderId: order.id,
+      email: "Buyer@Example.com",
+      stripeCustomerId: "cus_validation",
+      stripePaymentIntentId: "pi_validation",
+    });
+    assert.equal(paid.status, "PAID");
+    assert.equal(paid.customer?.normalizedEmail, "buyer@example.com");
+    assert.equal(paid.items[0]?.purchaseLicense?.licenseVersionId, stored.licenseVersionId);
+
+    const paidAgain = await markOrderPaid({
+      orderId: order.id,
+      email: "Buyer@Example.com",
+      stripeCustomerId: "cus_validation",
+      stripePaymentIntentId: "pi_validation",
+    });
+    const grants = await db.purchaseLicense.count({ where: { orderId: order.id } });
+    assert.equal(paidAgain.status, "PAID");
+    assert.equal(grants, 1);
+
+    const partial = await recordRefund({
+      orderId: order.id,
+      providerRefundId: "re_partial_validation",
+      amountCents: 2500,
+    });
+    assert.equal(partial.status, "PARTIALLY_REFUNDED");
+
+    const fullyRefunded = await recordRefund({
+      orderId: order.id,
+      providerRefundId: "re_final_validation",
+      amountCents: 10000,
+    });
+    assert.equal(fullyRefunded.status, "REFUNDED");
+    assert.equal(fullyRefunded.payments[0]?.refundedCents, 12500);
 
     console.log("Checkout/order database integration validation passed.");
   } finally {
