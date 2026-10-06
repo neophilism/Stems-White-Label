@@ -3303,3 +3303,11 @@ select {
     justify-self: start;
   }
 }
+
+
+.receipt__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+  align-items: center;
+}
