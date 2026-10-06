@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 
 import { db } from "../src/lib/db";
-import { getResolvedTenantTheme, themeCssVariables } from "../src/lib/theme";
+import { resolveTenantTheme, themeCssVariables } from "../src/lib/theme";
 
 async function main() {
   const suffix = Date.now().toString(36);
@@ -66,7 +66,7 @@ async function main() {
       },
     });
 
-    const resolved = await getResolvedTenantTheme(tenant.id);
+    const resolved = await resolveTenantTheme(tenant.id);
     assert.equal(resolved.preset, "CUSTOM");
     assert.equal(resolved.heroStyle, "SPLIT");
     assert.equal(resolved.logoAssetId, logo.id);
@@ -86,7 +86,7 @@ async function main() {
     });
 
     try {
-      const fallback = await getResolvedTenantTheme(secondTenant.id);
+      const fallback = await resolveTenantTheme(secondTenant.id);
       assert.equal(fallback.preset, "UNSEALED");
       assert.equal(fallback.logoAssetId, null);
       assert.notEqual(fallback.background, resolved.background);
