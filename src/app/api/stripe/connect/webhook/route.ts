@@ -42,10 +42,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const duplicate = await db.paymentWebhookEvent.findUnique({
+  const duplicate = await db.stripeWebhookEvent.findUnique({
     where: {
-      provider_providerEventId: {
-        provider: "STRIPE",
+      scope_providerEventId: {
+        scope: "CONNECT",
         providerEventId: event.id,
       },
     },
@@ -70,9 +70,9 @@ export async function POST(request: Request) {
       }
     }
 
-    await db.paymentWebhookEvent.create({
+    await db.stripeWebhookEvent.create({
       data: {
-        provider: "STRIPE",
+        scope: "CONNECT",
         providerEventId: event.id,
         eventType: event.type,
       },
