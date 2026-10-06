@@ -9,6 +9,7 @@ import {
   type PlaybackMode,
 } from "@/lib/player-state";
 import type { PlayerManifest } from "@/lib/player-manifest";
+import { resolveRevealState } from "@/lib/reveal-state";
 
 type SourceGroup = {
   id: string;
@@ -19,6 +20,7 @@ type SourceGroup = {
 type StemPlayerProps = {
   workSlug: string;
   hasFullMix: boolean;
+  revealSequenceName: string | null;
   sourceGroups: SourceGroup[];
   durationMs: number | null;
 };
@@ -32,6 +34,7 @@ function stemKey(stemGroupId: string) {
 export function StemPlayer({
   workSlug,
   hasFullMix,
+  revealSequenceName,
   sourceGroups,
   durationMs,
 }: StemPlayerProps) {
@@ -51,6 +54,10 @@ export function StemPlayer({
   const [masterVolume, setMasterVolume] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [revealSequence, setRevealSequence] =
+    useState<PlayerManifest["revealSequence"]>(null);
+  const [isRevealActive, setIsRevealActive] = useState(false);
+  const [revealCaption, setRevealCaption] = useState<string | null>(null);
 
   const contextRef = useRef<AudioContext | null>(null);
   const manifestRef = useRef<PlayerManifest | null>(null);
@@ -63,6 +70,8 @@ export function StemPlayer({
   const durationRef = useRef(durationMs ? durationMs / 1000 : 0);
   const animationRef = useRef<number | null>(null);
   const playingRef = useRef(false);
+  const revealActiveRef = useRef(false);
+  const revealStepIndexRef = useRef(-2);
 
   const previewGroupCount = sourceGroups.filter(
     (source) => source.hasPreview,
@@ -103,7 +112,11 @@ export function StemPlayer({
     );
   }
 
-  function updateTrackGains() {
+  function applyGainState(
+    nextMode: PlaybackMode,
+    nextMuted: ReadonlySet<string>,
+    nextSoloed: ReadonlySet<string>,
+  ) {
     const context = contextRef.current;
     if (!context) return;
 
@@ -111,15 +124,58 @@ export function StemPlayer({
       let audible = false;
 
       if (key === FULL_MIX_KEY) {
-        audible = mode === "full";
+        audible = nextMode === "full";
       } else {
         const stemGroupId = key.replace(/^stem:/, "");
-        audible = stemIsAudible(stemGroupId, mode, muted, soloed);
+        audible = stemIsAudible(
+          stemGroupId,
+          nextMode,
+          nextMuted,
+          nextSoloed,
+        );
       }
 
       gain.gain.cancelScheduledValues(context.currentTime);
       gain.gain.setTargetAtTime(audible ? 1 : 0, context.currentTime, 0.008);
     }
+  }
+
+  function updateTrackGains() {
+    applyGainState(mode, muted, soloed);
+  }
+
+  function applyRevealStateAt(position: number, force = false) {
+    const sequence = manifestRef.current?.revealSequence;
+    const manifest = manifestRef.current;
+
+    if (!sequence || !manifest) return;
+
+    const availableStemIds = new Set(
+      manifest.stems.map((stem) => stem.stemGroupId),
+    );
+    const resolved = resolveRevealState(
+      sequence.steps,
+      Math.max(0, Math.round(position * 1000)),
+      availableStemIds,
+    );
+
+    if (!force && resolved.stepIndex === revealStepIndexRef.current) {
+      return;
+    }
+
+    revealStepIndexRef.current = resolved.stepIndex;
+    setMode(resolved.mode);
+    setMuted(resolved.muted);
+    setSoloed(new Set());
+    setRevealCaption(resolved.caption);
+    applyGainState(resolved.mode, resolved.muted, new Set());
+  }
+
+  function exitReveal() {
+    revealActiveRef.current = false;
+    revealStepIndexRef.current = -2;
+    setIsRevealActive(false);
+    setRevealCaption(null);
   }
 
   useEffect(() => {
@@ -211,6 +267,7 @@ export function StemPlayer({
       contextRef.current = context;
       masterGainRef.current = masterGain;
       manifestRef.current = manifest;
+      setRevealSequence(manifest.revealSequence);
 
       let completed = 0;
 
@@ -269,6 +326,8 @@ export function StemPlayer({
       contextRef.current = null;
       masterGainRef.current = null;
       manifestRef.current = null;
+      setRevealSequence(null);
+      exitReveal();
 
       if (context && context.state !== "closed") {
         await context.close().catch(() => undefined);
@@ -294,8 +353,19 @@ export function StemPlayer({
         setPositionSeconds(durationRef.current);
         playingRef.current = false;
         setIsPlaying(false);
+
+        if (revealActiveRef.current) {
+          revealActiveRef.current = false;
+          setIsRevealActive(false);
+          setRevealCaption("Reveal complete.");
+        }
+
         stopAnimation();
         return;
+      }
+
+      if (revealActiveRef.current) {
+        applyRevealStateAt(nextPosition);
       }
 
       setPositionSeconds(nextPosition);
@@ -305,8 +375,8 @@ export function StemPlayer({
     animationRef.current = requestAnimationFrame(tick);
   }
 
-  async function startPlayback() {
-    const loaded = await loadPlayer();
+  async function startPlayback(alreadyLoaded = false) {
+    const loaded = alreadyLoaded ? true : await loadPlayer();
     if (!loaded) return;
 
     const context = contextRef.current;
@@ -387,9 +457,41 @@ export function StemPlayer({
     playingRef.current = false;
     setIsPlaying(false);
 
+    if (revealActiveRef.current) {
+      applyRevealStateAt(clamped, true);
+    }
+
     if (wasPlaying) {
       await startPlayback();
     }
+  }
+
+  async function startReveal() {
+    const loaded = await loadPlayer();
+    if (!loaded) return;
+
+    const sequence = manifestRef.current?.revealSequence;
+
+    if (!sequence || sequence.steps.length === 0) {
+      setError("No playable Reveal the Record sequence is available.");
+      return;
+    }
+
+    stopAnimation();
+    stopSources();
+
+    playingRef.current = false;
+    setIsPlaying(false);
+    offsetRef.current = 0;
+    setPositionSeconds(0);
+
+    revealActiveRef.current = true;
+    revealStepIndexRef.current = -2;
+    setIsRevealActive(true);
+    setError(null);
+    applyRevealStateAt(0, true);
+
+    await startPlayback(true);
   }
 
   function toggleSet(
@@ -410,22 +512,26 @@ export function StemPlayer({
   }
 
   function toggleMute(stemGroupId: string) {
+    exitReveal();
     setMode("stems");
     toggleSet(setMuted, stemGroupId);
   }
 
   function toggleSolo(stemGroupId: string) {
+    exitReveal();
     setMode("stems");
     toggleSet(setSoloed, stemGroupId);
   }
 
   function useAllSources() {
+    exitReveal();
     setMode("stems");
     setMuted(new Set());
     setSoloed(new Set());
   }
 
   function resetMix() {
+    exitReveal();
     setMuted(new Set());
     setSoloed(new Set());
     setMode(hasFullMix ? "full" : "stems");
@@ -454,9 +560,21 @@ export function StemPlayer({
 
         <div className="stem-player__mode-controls">
           <button
-            aria-pressed={mode === "full"}
+            className="stem-player__reveal-button"
+            aria-pressed={isRevealActive}
+            disabled={!revealSequenceName || !canPlay || isLoading}
+            onClick={() => void startReveal()}
+            type="button"
+          >
+            {isRevealActive ? "Restart Reveal" : "Reveal the Record"}
+          </button>
+          <button
+            aria-pressed={mode === "full" && !isRevealActive}
             disabled={!hasFullMix}
-            onClick={() => setMode("full")}
+            onClick={() => {
+              exitReveal();
+              setMode("full");
+            }}
             type="button"
           >
             Full Mix
@@ -489,6 +607,61 @@ export function StemPlayer({
         />
         <span>{formatPlaybackTime(durationSeconds)}</span>
       </div>
+
+      {revealSequenceName ? (
+        <div
+          className={
+            "stem-player__reveal-panel" +
+            (isRevealActive ? " stem-player__reveal-panel--active" : "")
+          }
+        >
+          <div className="stem-player__reveal-copy">
+            <span className="micro-label">Reveal the Record</span>
+            <strong>{revealSequence?.name ?? revealSequenceName}</strong>
+            {revealSequence?.description ? (
+              <p>{revealSequence.description}</p>
+            ) : null}
+            {revealCaption ? (
+              <p className="stem-player__reveal-caption">{revealCaption}</p>
+            ) : null}
+          </div>
+
+          {revealSequence && revealSequence.steps.length > 0 ? (
+            <div
+              className="stem-player__reveal-timeline"
+              aria-label="Reveal sequence timeline"
+            >
+              <div className="stem-player__reveal-track">
+                {revealSequence.steps.map((step, index) => {
+                  const maxMs = Math.max(
+                    durationSeconds * 1000,
+                    revealSequence.steps.at(-1)?.atMs ?? 1,
+                    1,
+                  );
+                  const left = Math.min(100, (step.atMs / maxMs) * 100);
+                  const passed = positionSeconds * 1000 >= step.atMs;
+
+                  return (
+                    <span
+                      className={
+                        "stem-player__reveal-marker" +
+                        (passed ? " stem-player__reveal-marker--passed" : "")
+                      }
+                      key={index}
+                      style={{ left: left + "%" }}
+                      title={
+                        (step.caption ?? step.action.replaceAll("_", " ")) +
+                        " at " +
+                        formatPlaybackTime(step.atMs / 1000)
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="stem-player__status-row">
         <div>

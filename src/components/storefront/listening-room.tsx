@@ -4,6 +4,7 @@ type ListeningRoomProps = {
   workSlug: string;
   durationMs: number | null;
   hasFullMix: boolean;
+  revealSequenceName: string | null;
   sourceGroups: Array<{
     id: string;
     label: string;
@@ -15,6 +16,7 @@ export function ListeningRoom({
   workSlug,
   durationMs,
   hasFullMix,
+  revealSequenceName,
   sourceGroups,
 }: ListeningRoomProps) {
   return (
@@ -23,15 +25,16 @@ export function ListeningRoom({
         <p className="micro-label">Listening room</p>
         <h2 id="listening-room-heading">Hear the construction.</h2>
         <p>
-          Every available source preview is locked to one playback clock. Solo a
-          section, remove it, combine several groups, or return to the finished
-          full mix without leaving the Work.
+          Every available source preview is locked to one playback clock. Explore
+          the sections manually, or let the creator's Reveal the Record sequence
+          reconstruct the arrangement on its own timeline.
         </p>
       </div>
 
       <StemPlayer
         durationMs={durationMs}
         hasFullMix={hasFullMix}
+        revealSequenceName={revealSequenceName}
         sourceGroups={sourceGroups}
         workSlug={workSlug}
       />

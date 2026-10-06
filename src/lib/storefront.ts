@@ -85,6 +85,16 @@ export async function getPublishedWork(tenantId: string, slug: string) {
       sections: {
         orderBy: { position: "asc" },
       },
+      revealSequences: {
+        where: { isPublished: true },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        take: 1,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      },
       stemGroups: {
         orderBy: { position: "asc" },
         include: {
