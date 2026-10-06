@@ -10,8 +10,12 @@ import { SiteFooter } from "@/components/storefront/site-footer";
 import { SiteHeader } from "@/components/storefront/site-header";
 import { SourceCabinet } from "@/components/storefront/source-cabinet";
 import { WorkLedger } from "@/components/storefront/work-ledger";
+import { WorkCard } from "@/components/storefront/work-card";
 import { WorkMetadata } from "@/components/storefront/work-metadata";
-import { getPublishedWork } from "@/lib/storefront";
+import {
+  getPublishedWork,
+  getRelatedPublishedWorks,
+} from "@/lib/storefront";
 import { getCurrentTenant } from "@/lib/tenant";
 
 type WorkPageProps = {
@@ -62,6 +66,11 @@ export default async function WorkPage({ params }: WorkPageProps) {
     ),
   }));
   const revealSequence = work.revealSequences[0] ?? null;
+  const relatedWorks = await getRelatedPublishedWorks(
+    tenant.id,
+    work.id,
+    work.collections.map((entry) => entry.collection.id),
+  );
 
   return (
     <>
@@ -133,6 +142,27 @@ export default async function WorkPage({ params }: WorkPageProps) {
             publishedAt={work.publishedAt}
           />
 
+          {relatedWorks.length ? (
+            <section className="related-works">
+              <div className="section-heading">
+                <div>
+                  <p className="micro-label">Continue through the archive</p>
+                  <h2>Related by Collection.</h2>
+                </div>
+                <p>
+                  These Works share one or more creator-curated rooms with the
+                  current recording. This is editorial proximity, not an
+                  algorithmic recommendation feed.
+                </p>
+              </div>
+              <div className="work-grid">
+                {relatedWorks.map((related) => (
+                  <WorkCard key={related.id} work={related} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="work-page__closing">
             <p className="micro-label">Unsealed source archive</p>
             <h2>The finished record is one view of the material.</h2>
@@ -140,7 +170,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
               This archive preserves another: the musical architecture from
               which the record was built.
             </p>
-            <Link className="text-link" href="/#archive">
+            <Link className="text-link" href="/archive">
               Continue through the archive <span aria-hidden="true">→</span>
             </Link>
           </section>
