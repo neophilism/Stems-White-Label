@@ -1,47 +1,77 @@
+import Link from "next/link";
+
 import { requireTenantPermission } from "@/lib/access";
 import { db } from "@/lib/db";
 
 export default async function CatalogAdminPage() {
   const { tenant } = await requireTenantPermission("catalog.read");
 
-  const [artistCount, collectionCount, workCount, stemGroupCount] =
-    await Promise.all([
-      db.artist.count({ where: { tenantId: tenant.id } }),
-      db.collection.count({ where: { tenantId: tenant.id } }),
-      db.work.count({ where: { tenantId: tenant.id } }),
-      db.stemGroup.count({ where: { work: { tenantId: tenant.id } } }),
-    ]);
-
-  const metrics = [
-    ["Artists", artistCount],
-    ["Collections", collectionCount],
-    ["Works", workCount],
-    ["Stem groups", stemGroupCount],
-  ] as const;
+  const [works, artistCount, collectionCount, stemGroupCount] = await Promise.all([
+    db.work.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        _count: { select: { stemGroups: true, audioAssets: true } },
+      },
+    }),
+    db.artist.count({ where: { tenantId: tenant.id } }),
+    db.collection.count({ where: { tenantId: tenant.id } }),
+    db.stemGroup.count({ where: { work: { tenantId: tenant.id } } }),
+  ]);
 
   return (
-    <main className="shell" style={{ padding: "56px 0" }}>
-      <p className="eyebrow">Catalog foundation</p>
-      <h1 style={{ fontSize: "3rem", marginBottom: 32 }}>{tenant.name}</h1>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: 16,
-        }}
-      >
-        {metrics.map(([label, value]) => (
-          <section className="card" key={label}>
-            <p className="eyebrow">{label}</p>
-            <strong style={{ fontSize: "2.5rem" }}>{value}</strong>
-          </section>
-        ))}
+    <main className="cms-shell">
+      <header className="cms-dashboard-header">
+        <div>
+          <p className="eyebrow">Catalog CMS</p>
+          <h1>{tenant.name}</h1>
+          <p>Build, process, preview, and publish source-material Works without developer intervention.</p>
+        </div>
+        <Link className="cms-primary-button" href="/admin/catalog/works/new">
+          + New Work
+        </Link>
+      </header>
+
+      <div className="cms-metric-grid">
+        <div><span>Works</span><strong>{works.length}</strong></div>
+        <div><span>Artists</span><strong>{artistCount}</strong></div>
+        <div><span>Collections</span><strong>{collectionCount}</strong></div>
+        <div><span>Source groups</span><strong>{stemGroupCount}</strong></div>
       </div>
-      <p style={{ color: "var(--muted)", marginTop: 32, maxWidth: 720 }}>
-        Stem groups are creator-defined musical sections. They can represent
-        drums, vocals, Horn Section 1, Horn Section 2, an orchestra bus, or any
-        other meaningful source grouping without a fixed instrument taxonomy.
-      </p>
+
+      <section className="cms-catalog-list">
+        <div className="cms-catalog-list__head">
+          <span>Work</span>
+          <span>Status</span>
+          <span>Sources</span>
+          <span>Updated</span>
+          <span />
+        </div>
+        {works.length ? (
+          works.map((work) => (
+            <article className="cms-catalog-row" key={work.id}>
+              <div>
+                <strong>{work.title}</strong>
+                <span>{work.slug}</span>
+              </div>
+              <span className={"cms-status cms-status--" + work.status.toLowerCase()}>
+                {work.status}
+              </span>
+              <span>{work._count.stemGroups} groups · {work._count.audioAssets} audio assets</span>
+              <span>{work.updatedAt.toLocaleDateString()}</span>
+              <Link href={"/admin/catalog/works/" + work.id}>Edit →</Link>
+            </article>
+          ))
+        ) : (
+          <div className="cms-empty-state">
+            <h2>No Works yet.</h2>
+            <p>Create the first Work and build its source cabinet.</p>
+            <Link className="cms-primary-button" href="/admin/catalog/works/new">
+              Create first Work
+            </Link>
+          </div>
+        )}
+      </section>
     </main>
   );
 }
