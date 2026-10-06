@@ -1,4 +1,4 @@
-import type { PlaybackMode } from "@/lib/player-state";
+import type { PlaybackMode } from "./player-state";
 
 export type RevealAction =
   | "ADD_SOURCE"
