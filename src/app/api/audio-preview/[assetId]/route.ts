@@ -105,7 +105,10 @@ async function authorize(request: Request, assetId: string) {
 export async function GET(request: Request, { params }: PreviewRouteProps) {
   const { assetId } = await params;
   const auth = await authorize(request, assetId);
-  if (auth.error || !auth.asset?.storageKey) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.asset?.storageKey) {
+    return NextResponse.json({ error: "Preview not found." }, { status: 404 });
+  }
 
   const range = safeRange(request.headers.get("range"));
 
@@ -138,7 +141,10 @@ export async function GET(request: Request, { params }: PreviewRouteProps) {
 export async function HEAD(request: Request, { params }: PreviewRouteProps) {
   const { assetId } = await params;
   const auth = await authorize(request, assetId);
-  if (auth.error || !auth.asset?.storageKey) return auth.error;
+  if (auth.error) return auth.error;
+  if (!auth.asset?.storageKey) {
+    return NextResponse.json({ error: "Preview not found." }, { status: 404 });
+  }
 
   try {
     const object = await headPrivateObject(auth.asset.storageKey);
