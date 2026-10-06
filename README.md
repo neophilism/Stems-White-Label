@@ -1206,6 +1206,209 @@ All prior migrations, unit tests, asset queue, CMS, navigation, themes, custom
 domains, Stripe Connect, licensing, checkout/orders, secure delivery, ZIP
 packages, FFmpeg/media, TypeScript, and production-build gates remain enabled.
 
+
+## Tenant analytics
+
+PR 17 adds first-party, tenant-scoped analytics for the storefront, listening
+room, conversion funnel, paid orders, refunds, and catalog engagement.
+
+The analytics system is deliberately separate from advertising analytics and
+does not require a third-party tracking service.
+
+### Privacy model
+
+The public event collector does not store:
+
+- IP address
+- user agent
+- browser fingerprint
+- email address
+- customer name
+- arbitrary URL parameters
+- arbitrary client metadata
+
+The first accepted storefront event creates a first-party HttpOnly
+stems_analytics_session cookie. It is SameSite=Lax, Secure in production, scoped
+to the site root, and expires after 24 hours.
+
+That opaque random session ID is used only to estimate observed sessions and
+connect anonymous storefront behavior within the short analytics window.
+
+The public request body is capped at 4 KB before JSON parsing.
+
+### Controlled event vocabulary
+
+Browser clients can submit only these event types:
+
+- WORK_VIEW
+- PLAYER_PLAY
+- PLAYER_PAUSE
+- STEM_MUTE
+- STEM_UNMUTE
+- STEM_SOLO
+- STEM_UNSOLO
+- ALL_SOURCES
+- FULL_MIX
+- REVEAL_START
+- REVEAL_COMPLETE
+
+Each browser event must include a bounded opaque event ID. The database unique
+constraint on tenant ID plus event ID makes retries idempotent.
+
+The server derives the tenant from the request hostname. Work events are accepted
+only for a PUBLISHED Work belonging to that tenant. A supplied source-group ID is
+accepted only when that StemGroup belongs to the resolved Work.
+
+Clients cannot submit CHECKOUT_STARTED or PURCHASE_COMPLETED.
+
+### Authoritative commerce events
+
+CHECKOUT_STARTED is written by the Checkout Session creation route only after
+Stripe returns a real Checkout URL and the local Order has been moved to
+CHECKOUT_CREATED.
+
+The current first-party analytics session is attached when available.
+
+PURCHASE_COMPLETED is written after the signed Stripe payment webhook has
+successfully fulfilled the Order. The event is idempotent by Order.
+
+Analytics writes are intentionally non-blocking in both commerce paths. An
+analytics storage problem can never cancel a valid Checkout or prevent customer
+fulfillment.
+
+The dashboard conversion rate is additionally grounded in authoritative Order
+state: it cohorts CHECKOUT_STARTED events from the selected period and counts
+those Orders as converted only when the Order has a paid timestamp and a paid or
+refund lifecycle status. A missing PURCHASE_COMPLETED analytics row therefore
+cannot erase a real conversion.
+
+### Listening-room instrumentation
+
+The synchronized player records deliberate user actions:
+
+- play
+- pause
+- mute / unmute
+- solo / unsolo
+- switch to all source groups
+- switch to full mix
+- Reveal the Record start
+- Reveal completion
+
+Automatic playback restart after a seek does not create another PLAYER_PLAY
+event. Reveal playback records REVEAL_START separately and does not inflate the
+normal play counter merely because the automated sequence starts its audio.
+
+Reveal completion is recorded only when the sequence reaches the natural end.
+
+### Work views
+
+The published Work page mounts a small client-side WorkViewTracker that submits a
+WORK_VIEW once for that mounted page.
+
+Unique Work-view sessions are counted separately from raw view events, so reloads
+or repeat views do not have to be treated as unique audience.
+
+### Revenue
+
+Revenue is never calculated from client analytics events.
+
+The reporting layer reads Payment and Order records for the requested period and
+groups results by currency.
+
+For each currency the dashboard shows:
+
+- gross paid amount
+- refunded amount
+- net customer revenue after recorded refunds
+- paid order count
+
+Net customer revenue intentionally does not claim to be Stripe payout proceeds.
+It is before Stripe processing fees and before any Connect transfer or
+application-fee reconciliation that may occur separately.
+
+### Reporting windows
+
+/admin/analytics supports:
+
+- 7 days
+- 30 days
+- 90 days
+- 365 days
+
+All current daily buckets use UTC because Tenant does not yet carry a reporting
+timezone.
+
+The dashboard shows:
+
+- Work views
+- observed first-party sessions
+- preview plays
+- source-group interactions
+- Reveal starts and completion percentage
+- Checkout starts
+- converted Checkout cohort
+- conversion percentage
+- refund-adjusted revenue by currency
+- daily activity
+- top Works by engagement with paid license units
+- top source groups by mute/solo interaction
+
+The same tenant-scoped report is available from:
+
+GET /api/admin/analytics?days=30
+
+and requires analytics.read.
+
+### Aggregation strategy
+
+High-volume report calculations happen in PostgreSQL rather than loading the
+event stream into the Next.js process.
+
+The report uses:
+
+- indexed AnalyticsEvent type/time lookups
+- database COUNT(DISTINCT ...) for observed sessions
+- database daily aggregation
+- database Work/source-group ranking
+- Payment + Order aggregation for revenue
+- OrderItem aggregation for paid Work units
+
+Static parameterized SQL strings are used for aggregate queries; tenant IDs and
+date boundaries are passed as database parameters rather than interpolated into
+SQL text.
+
+### Validation
+
+CI adds unit coverage for:
+
+- allowed public vs server-only event vocabulary
+- event-ID validation
+- playback-position bounds
+- analytics-session validation
+- supported reporting windows
+
+A PostgreSQL analytics integration test creates a real tenant, Work, source
+group, license product/version, two Checkout Orders, a partially refunded
+Payment, and engagement events. It proves:
+
+- raw Work-view counts
+- unique session counts
+- play counts
+- Reveal start/completion
+- source interaction counts
+- two Checkout starts with one authoritative paid conversion
+- 50% conversion for that cohort
+- gross / refunded / net revenue
+- paid Work units
+- top Work engagement
+- top source-group mute and solo rankings
+- daily aggregation
+
+All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe
+Connect, SaaS billing, licensing, Checkout, delivery, package, media, TypeScript,
+and production-build gates remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.
