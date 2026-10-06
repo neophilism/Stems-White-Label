@@ -43,6 +43,20 @@ async function processEvent(event: Stripe.Event) {
       return;
     }
 
+    case "checkout.session.expired": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const orderId = session.metadata?.orderId;
+      if (!orderId) return;
+      await db.order.updateMany({
+        where: {
+          id: orderId,
+          status: { in: ["PENDING", "CHECKOUT_CREATED", "PAYMENT_FAILED"] },
+        },
+        data: { status: "CANCELED", canceledAt: new Date() },
+      });
+      return;
+    }
+
     case "checkout.session.async_payment_failed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const orderId = session.metadata?.orderId;
@@ -72,6 +86,7 @@ async function processEvent(event: Stripe.Event) {
     case "refund.created":
     case "refund.updated": {
       const refund = event.data.object as Stripe.Refund;
+      if (refund.status !== "succeeded") return;
       const paymentIntentId = stringId(refund.payment_intent);
       const orderId = await orderIdFromPaymentIntent(paymentIntentId);
       if (!orderId) return;
