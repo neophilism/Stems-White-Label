@@ -318,6 +318,52 @@ section, StemGroup, RevealSequence/RevealStep, and ArtworkAsset records, reloads
 the graph, and validates relational behavior including RevealStep source nulling
 when a StemGroup is deleted.
 
+
+## Licensing engine
+
+PR 9 adds tenant-defined, versioned license offerings to each Work.
+
+A LicenseProduct is the stable offering identity: name, slug, presentation,
+scope, active state, ordering, and (for selected-source packages) the included
+StemGroups. License names are arbitrary tenant content rather than hard-coded
+plans.
+
+Every legal/price configuration lives in an immutable LicenseVersion containing:
+
+- integer-cent price and ISO-style currency code
+- complete license terms text
+- attribution requirement
+- commercial-use permission
+- derivative-work permission
+- redistribution permission
+- optional seat limit
+- optional project limit
+- effective and retirement timestamps
+
+Changing price or legal rights through the CMS retires the current version and
+creates the next numbered version instead of overwriting history. Product
+presentation fields can change without rewriting historical legal terms. PR 10
+can therefore bind each order item to the exact LicenseVersion accepted at
+checkout.
+
+Supported scopes are:
+
+- WORK
+- ALL_STEMS
+- SELECTED_STEMS
+
+SELECTED_STEMS requires explicit creator-selected StemGroups belonging to the
+same Work.
+
+The creator CMS has a dedicated licensing screen for each Work. Public published
+Work pages render only active products and their current unretired version,
+including price, rights summary, included source groups, and expandable full
+terms. Checkout is deliberately disabled until PR 10.
+
+CI includes a PostgreSQL licensing integration test that creates a selected-stem
+license, persists version 1, creates version 2, and confirms version 1 remains
+unchanged and queryable.
+
 ## Local setup
 
 1. Copy .env.example to .env.
