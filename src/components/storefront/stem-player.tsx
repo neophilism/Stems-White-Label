@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
+import { trackStorefrontEvent } from "@/lib/analytics-client";
 import {
   clampPlaybackOffset,
   formatPlaybackTime,
@@ -393,6 +394,11 @@ export function StemPlayer({
           revealActiveRef.current = false;
           setIsRevealActive(false);
           setRevealCaption("Reveal complete.");
+          trackStorefrontEvent({
+            type: "REVEAL_COMPLETE",
+            workSlug,
+            positionMs: Math.round(durationRef.current * 1000),
+          });
         }
 
         stopAnimation();
@@ -410,7 +416,10 @@ export function StemPlayer({
     animationRef.current = requestAnimationFrame(tick);
   }
 
-  async function startPlayback(alreadyLoaded = false) {
+  async function startPlayback(
+    alreadyLoaded = false,
+    emitAnalytics = true,
+  ) {
     const loaded = alreadyLoaded ? true : await loadPlayer();
     if (!loaded) return;
 
@@ -453,6 +462,14 @@ export function StemPlayer({
     playingRef.current = true;
     setIsPlaying(true);
     startAnimation();
+
+    if (emitAnalytics) {
+      trackStorefrontEvent({
+        type: "PLAYER_PLAY",
+        workSlug,
+        positionMs: Math.round(offset * 1000),
+      });
+    }
   }
 
   function pausePlayback() {
@@ -465,6 +482,11 @@ export function StemPlayer({
     setPositionSeconds(nextOffset);
     playingRef.current = false;
     setIsPlaying(false);
+    trackStorefrontEvent({
+      type: "PLAYER_PAUSE",
+      workSlug,
+      positionMs: Math.round(nextOffset * 1000),
+    });
   }
 
   async function togglePlayback() {
@@ -497,7 +519,7 @@ export function StemPlayer({
     }
 
     if (wasPlaying) {
-      await startPlayback();
+      await startPlayback(false, false);
     }
   }
 
@@ -525,8 +547,13 @@ export function StemPlayer({
     setIsRevealActive(true);
     setError(null);
     applyRevealStateAt(0, true);
+    trackStorefrontEvent({
+      type: "REVEAL_START",
+      workSlug,
+      positionMs: 0,
+    });
 
-    await startPlayback(true);
+    await startPlayback(true, false);
   }
 
   function toggleSet(
@@ -547,15 +574,29 @@ export function StemPlayer({
   }
 
   function toggleMute(stemGroupId: string) {
+    const willUnmute = muted.has(stemGroupId);
     exitReveal();
     setMode("stems");
     toggleSet(setMuted, stemGroupId);
+    trackStorefrontEvent({
+      type: willUnmute ? "STEM_UNMUTE" : "STEM_MUTE",
+      workSlug,
+      stemGroupId,
+      positionMs: Math.round(currentPosition() * 1000),
+    });
   }
 
   function toggleSolo(stemGroupId: string) {
+    const willUnsolo = soloed.has(stemGroupId);
     exitReveal();
     setMode("stems");
     toggleSet(setSoloed, stemGroupId);
+    trackStorefrontEvent({
+      type: willUnsolo ? "STEM_UNSOLO" : "STEM_SOLO",
+      workSlug,
+      stemGroupId,
+      positionMs: Math.round(currentPosition() * 1000),
+    });
   }
 
   function useAllSources() {
@@ -563,6 +604,11 @@ export function StemPlayer({
     setMode("stems");
     setMuted(new Set());
     setSoloed(new Set());
+    trackStorefrontEvent({
+      type: "ALL_SOURCES",
+      workSlug,
+      positionMs: Math.round(currentPosition() * 1000),
+    });
   }
 
   function resetMix() {
@@ -609,6 +655,11 @@ export function StemPlayer({
             onClick={() => {
               exitReveal();
               setMode("full");
+              trackStorefrontEvent({
+                type: "FULL_MIX",
+                workSlug,
+                positionMs: Math.round(currentPosition() * 1000),
+              });
             }}
             type="button"
           >

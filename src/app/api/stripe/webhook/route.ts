@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 
+import { recordPurchaseAnalytics } from "@/lib/analytics";
 import { db } from "@/lib/db";
 import { markOrderPaid, markOrderPaymentFailed, recordRefund } from "@/lib/payments";
 import { getStripe, getStripeWebhookSecret } from "@/lib/stripe";
@@ -39,6 +40,9 @@ async function processEvent(event: Stripe.Event) {
         customerName: session.customer_details?.name ?? null,
         stripeCustomerId: stringId(session.customer),
         stripePaymentIntentId: stringId(session.payment_intent),
+      });
+      await recordPurchaseAnalytics(orderId).catch((analyticsError) => {
+        console.error("Unable to record purchase analytics", analyticsError);
       });
       return;
     }

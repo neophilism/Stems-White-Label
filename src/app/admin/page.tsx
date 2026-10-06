@@ -83,6 +83,20 @@ export default async function AdminPage() {
       ) : null}
 
       <section className="cms-panel">
+        <p className="eyebrow">Performance & behavior</p>
+        <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+          Analytics
+        </h2>
+        <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+          See Work views, listening behavior, Reveal usage, source-group
+          interactions, conversion, paid orders, refunds, and top catalog items.
+        </p>
+        <Link className="cms-primary-button" href="/admin/analytics">
+          Open Analytics
+        </Link>
+      </section>
+
+      <section className="cms-panel">
         <p className="eyebrow">Catalog</p>
         <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
           Source-material CMS

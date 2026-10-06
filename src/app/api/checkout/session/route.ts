@@ -1,5 +1,11 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import {
+  ANALYTICS_SESSION_COOKIE,
+  normalizeAnalyticsSessionId,
+  recordSystemAnalyticsEvent,
+} from "@/lib/analytics";
 import {
   assertAcceptedLicenseVersions,
   createPendingOrder,
@@ -96,6 +102,19 @@ export async function POST(request: Request) {
           stripePaymentIntentId:
             typeof session.payment_intent === "string" ? session.payment_intent : undefined,
         },
+      });
+
+      const cookieStore = await cookies();
+      const analyticsSession = cookieStore.get(ANALYTICS_SESSION_COOKIE)?.value;
+      await recordSystemAnalyticsEvent({
+        tenantId: tenant.id,
+        type: "CHECKOUT_STARTED",
+        orderId: order.id,
+        sessionId: analyticsSession
+          ? normalizeAnalyticsSessionId(analyticsSession)
+          : null,
+      }).catch((analyticsError) => {
+        console.error("Unable to record checkout analytics", analyticsError);
       });
 
       return NextResponse.json({ url: session.url, orderId: order.id });

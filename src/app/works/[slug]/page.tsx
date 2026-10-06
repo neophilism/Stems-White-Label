@@ -12,6 +12,7 @@ import { SourceCabinet } from "@/components/storefront/source-cabinet";
 import { WorkLedger } from "@/components/storefront/work-ledger";
 import { WorkCard } from "@/components/storefront/work-card";
 import { WorkMetadata } from "@/components/storefront/work-metadata";
+import { WorkViewTracker } from "@/components/storefront/work-view-tracker";
 import {
   getPublishedWork,
   getRelatedPublishedWorks,
@@ -75,6 +76,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
   return (
     <>
       <SiteHeader tenantName={tenant.name} />
+      <WorkViewTracker workSlug={work.slug} />
       <main className="work-page">
         <div className="storefront-shell">
           <Link className="text-link work-page__back" href="/#archive">

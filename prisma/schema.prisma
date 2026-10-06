@@ -189,6 +189,22 @@ enum StripeWebhookScope {
   BILLING
 }
 
+enum AnalyticsEventType {
+  WORK_VIEW
+  PLAYER_PLAY
+  PLAYER_PAUSE
+  STEM_MUTE
+  STEM_UNMUTE
+  STEM_SOLO
+  STEM_UNSOLO
+  ALL_SOURCES
+  FULL_MIX
+  REVEAL_START
+  REVEAL_COMPLETE
+  CHECKOUT_STARTED
+  PURCHASE_COMPLETED
+}
+
 enum SaasSubscriptionStatus {
   UNSUBSCRIBED
   TRIALING
@@ -278,6 +294,7 @@ model Tenant {
   themeAssets     ThemeAsset[]
   commerce        TenantCommerce?
   subscription    TenantSubscription?
+  analyticsEvents AnalyticsEvent[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -380,6 +397,7 @@ model Work {
   artwork          ArtworkAsset?
   licenseProducts  LicenseProduct[]
   orderItems        OrderItem[]
+  analyticsEvents   AnalyticsEvent[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -446,6 +464,7 @@ model StemGroup {
   children     StemGroup[]  @relation("StemGroupHierarchy")
   audioAssets  AudioAsset[]
   revealSteps  RevealStep[]
+  analyticsEvents AnalyticsEvent[]
   licenseProducts LicenseProductStem[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
@@ -670,6 +689,7 @@ model Order {
   items                   OrderItem[]
   payments                Payment[]
   purchaseLicenses        PurchaseLicense[]
+  analyticsEvents          AnalyticsEvent[]
   createdAt               DateTime    @default(now())
   updatedAt               DateTime    @updatedAt
 
@@ -979,4 +999,29 @@ model StripeWebhookEvent {
 
   @@unique([scope, providerEventId])
   @@index([scope, processedAt])
+}
+
+
+model AnalyticsEvent {
+  id            String             @id @default(cuid())
+  tenantId      String
+  type          AnalyticsEventType
+  workId        String?
+  stemGroupId   String?
+  orderId       String?
+  sessionId     String?            @db.VarChar(64)
+  clientEventId String?            @db.VarChar(96)
+  positionMs    Int?
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  work          Work?              @relation(fields: [workId], references: [id], onDelete: Cascade)
+  stemGroup     StemGroup?         @relation(fields: [stemGroupId], references: [id], onDelete: SetNull)
+  order         Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt     DateTime           @default(now())
+
+  @@unique([tenantId, clientEventId])
+  @@index([tenantId, type, createdAt])
+  @@index([tenantId, workId, type, createdAt])
+  @@index([tenantId, stemGroupId, type, createdAt])
+  @@index([tenantId, sessionId, createdAt])
+  @@index([orderId, type])
 }
