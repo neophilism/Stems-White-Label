@@ -1739,3 +1739,37 @@ select {
     padding-inline: 1rem;
   }
 }
+
+
+/* Processed waveform */
+
+.stem-player__waveform {
+  position: relative;
+  height: 82px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(185, 161, 111, 0.035), transparent),
+    rgba(255, 255, 255, 0.01);
+}
+
+.stem-player__waveform svg {
+  width: 100%;
+  height: 100%;
+  color: var(--metal-soft);
+  opacity: 0.72;
+}
+
+.stem-player__waveform polygon {
+  fill: currentColor;
+}
+
+.stem-player__waveform-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink);
+  box-shadow: 0 0 8px rgba(242, 238, 228, 0.22);
+  pointer-events: none;
+}

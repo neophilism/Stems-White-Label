@@ -35,3 +35,29 @@ export async function requireTenantPermission(permission: Permission) {
 
   return { tenant, session, membership };
 }
+
+export async function getTenantApiAccess(permission: Permission) {
+  const [tenant, session] = await Promise.all([
+    getCurrentTenant(),
+    getServerSession(authOptions),
+  ]);
+
+  if (!tenant || !session?.user?.id) {
+    return null;
+  }
+
+  const membership = await db.tenantMembership.findUnique({
+    where: {
+      tenantId_userId: {
+        tenantId: tenant.id,
+        userId: session.user.id,
+      },
+    },
+  });
+
+  if (!membership || !hasPermission(membership.role as TenantRole, permission)) {
+    return null;
+  }
+
+  return { tenant, session, membership };
+}

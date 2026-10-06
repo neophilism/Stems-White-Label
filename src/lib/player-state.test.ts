@@ -5,6 +5,7 @@ import {
   clampPlaybackOffset,
   formatPlaybackTime,
   stemIsAudible,
+  waveformPolygon,
 } from "./player-state";
 
 test("full mix mode silences stem previews", () => {
@@ -43,4 +44,15 @@ test("playback helpers clamp offsets and format elapsed time", () => {
   assert.equal(clampPlaybackOffset(-3, 240), 0);
   assert.equal(clampPlaybackOffset(500, 240), 240);
   assert.equal(formatPlaybackTime(245.9), "4:05");
+});
+
+
+test("waveform polygon clamps amplitudes and mirrors around center", () => {
+  const polygon = waveformPolygon([0, 0.5, 2], 100, 20);
+  const points = polygon.split(" ");
+
+  assert.equal(points.length, 6);
+  assert.equal(points[0], "0.00,10.00");
+  assert.equal(points[2], "100.00,1.00");
+  assert.equal(points[3], "100.00,19.00");
 });
