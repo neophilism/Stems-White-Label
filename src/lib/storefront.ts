@@ -69,6 +69,91 @@ export async function getPublishedCollection(tenantId: string, slug: string) {
   });
 }
 
+
+export async function getPublishedWork(tenantId: string, slug: string) {
+  return db.work.findFirst({
+    where: {
+      tenantId,
+      slug,
+      status: "PUBLISHED",
+    },
+    include: {
+      primaryArtist: true,
+      credits: {
+        orderBy: { position: "asc" },
+      },
+      sections: {
+        orderBy: { position: "asc" },
+      },
+      stemGroups: {
+        orderBy: { position: "asc" },
+        include: {
+          children: {
+            orderBy: { position: "asc" },
+            select: {
+              id: true,
+              label: true,
+            },
+          },
+          audioAssets: {
+            where: { status: "READY" },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      },
+      audioAssets: {
+        where: { status: "READY" },
+        orderBy: { createdAt: "asc" },
+      },
+      collections: {
+        where: {
+          collection: { status: "PUBLISHED" },
+        },
+        orderBy: { position: "asc" },
+        include: {
+          collection: true,
+        },
+      },
+    },
+  });
+}
+
+export function formatTechnicalSpec(asset: {
+  sampleRateHz?: number | null;
+  bitDepth?: number | null;
+  channels?: number | null;
+  mimeType?: string | null;
+}) {
+  const parts: string[] = [];
+
+  if (asset.sampleRateHz) {
+    const khz = asset.sampleRateHz / 1000;
+    parts.push(
+      Number.isInteger(khz) ? String(khz) + " kHz" : khz.toFixed(1) + " kHz",
+    );
+  }
+
+  if (asset.bitDepth) {
+    parts.push(String(asset.bitDepth) + "-bit");
+  }
+
+  if (asset.channels) {
+    parts.push(
+      asset.channels === 1
+        ? "Mono"
+        : asset.channels === 2
+          ? "Stereo"
+          : String(asset.channels) + " channels",
+    );
+  }
+
+  if (asset.mimeType) {
+    parts.push(asset.mimeType.replace(/^audio\//, "").toUpperCase());
+  }
+
+  return parts.join(" · ");
+}
+
 export function formatDuration(durationMs: number | null | undefined) {
   if (!durationMs || durationMs < 0) return null;
 

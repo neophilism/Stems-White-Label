@@ -197,6 +197,7 @@ model Work {
   collections     CollectionWork[]
   stemGroups      StemGroup[]
   audioAssets     AudioAsset[]
+  sections        WorkSection[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -204,6 +205,20 @@ model Work {
   @@unique([tenantId, catalogNumber])
   @@index([tenantId, status])
   @@index([primaryArtistId])
+}
+
+model WorkSection {
+  id        String   @id @default(cuid())
+  workId    String
+  kind      String
+  title     String
+  body      String   @db.Text
+  position  Int      @default(0)
+  work      Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workId, position])
 }
 
 model WorkCredit {
