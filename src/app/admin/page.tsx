@@ -66,6 +66,22 @@ export default async function AdminPage() {
         </section>
       ) : null}
 
+      {hasPermission(membership.role as TenantRole, "tenant.manage") ? (
+        <section className="cms-panel">
+          <p className="eyebrow">Platform subscription</p>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+            SaaS billing
+          </h2>
+          <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+            Manage the platform plan, trials, upgrades or downgrades, usage
+            limits, invoices, and billing details.
+          </p>
+          <Link className="cms-primary-button" href="/admin/billing">
+            Open Billing
+          </Link>
+        </section>
+      ) : null}
+
       <section className="cms-panel">
         <p className="eyebrow">Catalog</p>
         <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>

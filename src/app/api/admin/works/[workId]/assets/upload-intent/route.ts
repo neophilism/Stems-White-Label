@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
+import { assertTenantStorageCapacity } from "@/lib/billing";
 import {
   sourceStorageKey,
   validateSourceUpload,
@@ -66,6 +67,15 @@ export async function POST(request: Request, { params }: UploadIntentRouteProps)
           error instanceof Error ? error.message : "Invalid source upload.",
       },
       { status: 400 },
+    );
+  }
+
+  try {
+    await assertTenantStorageCapacity(access.tenant.id, upload.sizeBytes);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Storage limit reached." },
+      { status: 403 },
     );
   }
 

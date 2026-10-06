@@ -4,6 +4,10 @@ import type { ThemeAssetKind } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
+import {
+  assertTenantCanUseWhiteLabel,
+  assertTenantStorageCapacity,
+} from "@/lib/billing";
 import { db } from "@/lib/db";
 import { createPrivateUploadUrl } from "@/lib/object-storage";
 import {
@@ -31,6 +35,9 @@ export async function POST(request: Request) {
       mimeType: String(body?.mimeType ?? ""),
       sizeBytes: Number(body?.sizeBytes),
     });
+
+    await assertTenantCanUseWhiteLabel(access.tenant.id);
+    await assertTenantStorageCapacity(access.tenant.id, input.sizeBytes);
 
     const assetId = randomUUID();
     const storageKey = themeAssetStorageKey({

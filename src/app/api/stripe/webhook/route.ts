@@ -122,10 +122,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const alreadyProcessed = await db.paymentWebhookEvent.findUnique({
+  const alreadyProcessed = await db.stripeWebhookEvent.findUnique({
     where: {
-      provider_providerEventId: {
-        provider: "STRIPE",
+      scope_providerEventId: {
+        scope: "PAYMENTS",
         providerEventId: event.id,
       },
     },
@@ -134,9 +134,9 @@ export async function POST(request: Request) {
 
   try {
     await processEvent(event);
-    await db.paymentWebhookEvent.create({
+    await db.stripeWebhookEvent.create({
       data: {
-        provider: "STRIPE",
+        scope: "PAYMENTS",
         providerEventId: event.id,
         eventType: event.type,
       },

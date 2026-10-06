@@ -22,3 +22,10 @@ export function getStripeConnectWebhookSecret() {
   if (!secret) throw new Error("STRIPE_CONNECT_WEBHOOK_SECRET is not configured.");
   return secret;
 }
+
+
+export function getStripeBillingWebhookSecret() {
+  const secret = process.env.STRIPE_BILLING_WEBHOOK_SECRET;
+  if (!secret) throw new Error("STRIPE_BILLING_WEBHOOK_SECRET is not configured.");
+  return secret;
+}

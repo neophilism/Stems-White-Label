@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
+import { assertTenantStorageCapacity } from "@/lib/billing";
 import {
   artworkStorageKey,
   validateArtworkUpload,
@@ -36,8 +37,13 @@ export async function POST(request: Request, { params }: RouteProps) {
 
     const existing = await db.artworkAsset.findUnique({
       where: { workId },
-      select: { id: true },
+      select: { id: true, sizeBytes: true },
     });
+    const previousBytes = existing?.sizeBytes ?? 0n;
+    const nextBytes = BigInt(input.sizeBytes);
+    const additionalBytes = nextBytes > previousBytes ? nextBytes - previousBytes : 0n;
+    await assertTenantStorageCapacity(access.tenant.id, additionalBytes);
+
     const assetId = existing?.id ?? randomUUID();
 
     const storageKey = artworkStorageKey({

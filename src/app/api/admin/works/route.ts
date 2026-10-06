@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
+import { assertTenantCanCreateWork } from "@/lib/billing";
 import { normalizeWorkInput } from "@/lib/catalog-cms";
 import { db } from "@/lib/db";
 
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    await assertTenantCanCreateWork(access.tenant.id);
     const input = normalizeWorkInput(body);
 
     if (input.primaryArtistId) {

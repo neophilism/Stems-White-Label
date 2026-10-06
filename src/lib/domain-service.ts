@@ -1,3 +1,4 @@
+import { assertTenantCanRegisterCustomDomain } from "@/lib/billing";
 import { db } from "@/lib/db";
 import {
   domainClaimExpiry,
@@ -41,6 +42,7 @@ export function domainSetupInstructions(domain: {
 }
 
 export async function registerTenantDomain(tenantId: string, value: string) {
+  await assertTenantCanRegisterCustomDomain(tenantId);
   const hostname = normalizeCustomHostname(value);
   const now = new Date();
 
