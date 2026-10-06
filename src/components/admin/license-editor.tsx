@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+type LicenseScope = "WORK" | "SELECTED_STEMS" | "ALL_STEMS";
 type Stem = { id: string; label: string };
 type Version = {
   id: string; version: number; priceCents: number; currency: string; termsText: string;
@@ -11,7 +12,7 @@ type Version = {
 };
 type Product = {
   id: string; slug: string; name: string; summary: string | null;
-  scope: "WORK" | "SELECTED_STEMS" | "ALL_STEMS"; isActive: boolean;
+  scope: LicenseScope; isActive: boolean;
   selectedStems: Array<{ stemGroupId: string }>; versions: Version[];
 };
 type Payload = { work: { id: string; title: string; slug: string; stemGroups: Stem[]; licenseProducts: Product[] } };
@@ -20,9 +21,26 @@ function currentVersion(product: Product) {
   return product.versions[0];
 }
 
-function emptyDraft() {
+type LicenseDraftState = {
+  name: string;
+  slug: string;
+  summary: string;
+  scope: LicenseScope;
+  priceCents: number;
+  currency: string;
+  termsText: string;
+  attributionRequired: boolean;
+  commercialUseAllowed: boolean;
+  derivativesAllowed: boolean;
+  redistributionAllowed: boolean;
+  seatLimit: string;
+  projectLimit: string;
+  selectedStemGroupIds: string[];
+};
+
+function emptyDraft(): LicenseDraftState {
   return {
-    name: "", slug: "", summary: "", scope: "ALL_STEMS" as const,
+    name: "", slug: "", summary: "", scope: "ALL_STEMS",
     priceCents: 0, currency: "USD", termsText: "",
     attributionRequired: false, commercialUseAllowed: true,
     derivativesAllowed: true, redistributionAllowed: false,
@@ -122,7 +140,7 @@ export function LicenseEditor({ workId }: { workId: string }) {
           <label><span>Slug</span><input value={draft.slug} onChange={(e)=>setDraft({...draft,slug:e.target.value})}/></label>
           <label><span>Price (cents)</span><input type="number" min="0" value={draft.priceCents} onChange={(e)=>setDraft({...draft,priceCents:Number(e.target.value)})}/></label>
           <label><span>Currency</span><input maxLength={3} value={draft.currency} onChange={(e)=>setDraft({...draft,currency:e.target.value.toUpperCase()})}/></label>
-          <label><span>Scope</span><select value={draft.scope} onChange={(e)=>setDraft({...draft,scope:e.target.value as typeof draft.scope,selectedStemGroupIds:[]})}><option value="WORK">Work</option><option value="ALL_STEMS">All source groups</option><option value="SELECTED_STEMS">Selected source groups</option></select></label>
+          <label><span>Scope</span><select value={draft.scope} onChange={(e)=>setDraft({...draft,scope:e.target.value as LicenseScope,selectedStemGroupIds:[]})}><option value="WORK">Work</option><option value="ALL_STEMS">All source groups</option><option value="SELECTED_STEMS">Selected source groups</option></select></label>
           <label><span>Project limit</span><input type="number" min="1" value={draft.projectLimit} onChange={(e)=>setDraft({...draft,projectLimit:e.target.value})}/></label>
           <label><span>Seat limit</span><input type="number" min="1" value={draft.seatLimit} onChange={(e)=>setDraft({...draft,seatLimit:e.target.value})}/></label>
         </div>
