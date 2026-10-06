@@ -19,6 +19,7 @@ type QuoteItem = {
 };
 
 type Quote = {
+  checkoutReady: boolean;
   currency: string;
   subtotalCents: number;
   items: QuoteItem[];
@@ -202,9 +203,16 @@ export function CartClient({ buyNowId }: { buyNowId: string | null }) {
           />
         </label>
 
+        {quote && !quote.checkoutReady ? (
+          <p className="cart-review__error">
+            This storefront is temporarily unable to accept payments while its
+            merchant account is being verified.
+          </p>
+        ) : null}
+
         <button
           className="purchase-button cart-review__checkout"
-          disabled={!quote || !accepted || busy}
+          disabled={!quote || !quote.checkoutReady || !accepted || busy}
           onClick={() => void checkout()}
           type="button"
         >
