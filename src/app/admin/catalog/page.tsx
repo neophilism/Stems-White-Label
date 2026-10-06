@@ -27,9 +27,14 @@ export default async function CatalogAdminPage() {
           <h1>{tenant.name}</h1>
           <p>Build, process, preview, and publish source-material Works without developer intervention.</p>
         </div>
-        <Link className="cms-primary-button" href="/admin/catalog/works/new">
-          + New Work
-        </Link>
+        <div className="cms-header-actions">
+          <Link className="cms-secondary-button" href="/admin/catalog/collections">
+            Curate Collections
+          </Link>
+          <Link className="cms-primary-button" href="/admin/catalog/works/new">
+            + New Work
+          </Link>
+        </div>
       </header>
 
       <div className="cms-metric-grid">
