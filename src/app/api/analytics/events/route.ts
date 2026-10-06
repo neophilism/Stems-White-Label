@@ -19,6 +19,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Storefront not found." }, { status: 404 });
   }
 
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > 4096) {
+    return NextResponse.json(
+      { error: "Analytics payload is too large." },
+      { status: 413 },
+    );
+  }
+
   const body = await request.json().catch(() => null);
 
   try {
