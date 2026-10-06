@@ -32,7 +32,7 @@ async function findTenantWork(tenantId: string, workId: string) {
         include: {
           audioAssets: {
             where: { sourceAssetId: null },
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "desc" },
             select: {
               id: true,
               kind: true,
@@ -62,7 +62,7 @@ async function findTenantWork(tenantId: string, workId: string) {
           sourceAssetId: null,
           stemGroupId: null,
         },
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
         select: {
           id: true,
           kind: true,
