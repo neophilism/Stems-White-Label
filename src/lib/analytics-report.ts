@@ -73,14 +73,11 @@ const uniqueSessionsSql =
 
 const funnelSql =
   'SELECT COUNT(*)::bigint AS checkouts, ' +
-  'COUNT(*) FILTER (WHERE EXISTS (' +
-  'SELECT 1 FROM "AnalyticsEvent" purchase ' +
-  'WHERE purchase."tenantId" = checkout."tenantId" ' +
-  'AND purchase."orderId" = checkout."orderId" ' +
-  "AND purchase.\"type\" = 'PURCHASE_COMPLETED' " +
-  'AND purchase."createdAt" < $3' +
-  '))::bigint AS converted ' +
+  'COUNT(*) FILTER (WHERE orders."paidAt" IS NOT NULL ' +
+  'AND orders."paidAt" < $3 ' +
+  "AND orders.\"status\" IN ('PAID','PARTIALLY_REFUNDED','REFUNDED'))::bigint AS converted " +
   'FROM "AnalyticsEvent" checkout ' +
+  'JOIN "Order" orders ON orders."id" = checkout."orderId" ' +
   'WHERE checkout."tenantId" = $1 ' +
   "AND checkout.\"type\" = 'CHECKOUT_STARTED' " +
   'AND checkout."createdAt" >= $2 AND checkout."createdAt" < $3';
