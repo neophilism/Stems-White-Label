@@ -375,8 +375,8 @@ export function StemPlayer({
     animationRef.current = requestAnimationFrame(tick);
   }
 
-  async function startPlayback() {
-    const loaded = await loadPlayer();
+  async function startPlayback(alreadyLoaded = false) {
+    const loaded = alreadyLoaded ? true : await loadPlayer();
     if (!loaded) return;
 
     const context = contextRef.current;
@@ -491,7 +491,7 @@ export function StemPlayer({
     setError(null);
     applyRevealStateAt(0, true);
 
-    await startPlayback();
+    await startPlayback(true);
   }
 
   function toggleSet(
