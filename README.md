@@ -131,6 +131,48 @@ PR 7 will automate creation and storage of these preview derivatives. The player
 and secure preview boundary themselves are functional now for any registered
 PREVIEW assets.
 
+
+## Reveal the Record
+
+A published Work can expose one or more creator-authored RevealSequence records.
+The first published sequence is used by the public listening room.
+
+Each sequence contains ordered, timed RevealStep actions:
+
+- ADD_SOURCE
+- REMOVE_SOURCE
+- ALL_SOURCES
+- FULL_MIX
+- SILENCE
+
+ADD_SOURCE and REMOVE_SOURCE target arbitrary StemGroups, so the choreography can
+work with groups such as Horn Section 1, Horn Section 2, drums, choir, orchestra,
+textures, or any other creator-defined section.
+
+Reveal playback is deterministic rather than timer-only. At any playback position,
+the client resolves the full sequence state from the beginning through that point.
+This means seeking during a Reveal reconstructs the correct source mix immediately
+instead of losing earlier additions/removals.
+
+The listening room provides:
+
+- Reveal the Record start/restart control
+- creator-defined sequence name and optional description
+- timed captions
+- visual sequence timeline
+- automatic source additions/removals
+- optional transition to all source groups
+- optional transition back to the finished full mix
+- clean exit from guided mode when the listener manually changes the mix
+- normal pause/resume and seek behavior while Reveal remains active
+
+Only published sequences are exposed. Reveal steps that reference a StemGroup
+without a playable PREVIEW asset are excluded from the public player manifest.
+A FULL_MIX step is excluded when no full-mix preview exists.
+
+Sequence authoring UI is intentionally deferred to the catalog CMS milestone;
+the domain model and public playback behavior are complete here.
+
 ## Local setup
 
 1. Copy .env.example to .env.
