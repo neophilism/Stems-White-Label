@@ -1599,6 +1599,7 @@ A failed audio-processing retry:
 
 - requires the job to belong to the selected tenant
 - requires status FAILED
+- refuses to retry while the Work is PUBLISHED; the tenant must unpublish it first
 - returns the job to QUEUED
 - resets attempts and worker-lock state
 - clears the old error/completion state
