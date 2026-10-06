@@ -257,6 +257,7 @@ model Tenant {
   downloadPackages DownloadPackage[]
   theme           TenantTheme?
   themeAssets     ThemeAsset[]
+  commerce        TenantCommerce?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -638,6 +639,8 @@ model Order {
   termsAcceptedAt         DateTime
   stripeCheckoutSessionId String?     @unique
   stripePaymentIntentId   String?     @unique
+  stripeConnectedAccountId String?
+  platformFeeCents        Int         @default(0)
   paidAt                  DateTime?
   failedAt                DateTime?
   canceledAt              DateTime?
@@ -694,6 +697,8 @@ model Payment {
   provider          PaymentProvider @default(STRIPE)
   status            PaymentStatus   @default(PENDING)
   providerPaymentId String?
+  stripeConnectedAccountId String?
+  platformFeeCents  Int             @default(0)
   amountCents       Int
   currency          String
   failureCode       String?
@@ -874,4 +879,31 @@ model ThemeAsset {
   updatedAt   DateTime         @updatedAt
 
   @@index([tenantId, kind, status])
+}
+
+
+model TenantCommerce {
+  id                              String   @id @default(cuid())
+  tenantId                        String   @unique
+  stripeAccountId                 String?  @unique
+  country                         String?
+  defaultCurrency                 String?
+  chargesEnabled                  Boolean  @default(false)
+  payoutsEnabled                  Boolean  @default(false)
+  detailsSubmitted                Boolean  @default(false)
+  requirementsCurrentlyDue        Json?
+  requirementsEventuallyDue       Json?
+  requirementsPastDue             Json?
+  requirementsPendingVerification Json?
+  disabledReason                  String?
+  platformFeeBps                  Int      @default(0)
+  accountCreatedAt                DateTime?
+  onboardingStartedAt             DateTime?
+  onboardingCompletedAt           DateTime?
+  lastSyncedAt                    DateTime?
+  tenant                          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt                       DateTime @default(now())
+  updatedAt                       DateTime @updatedAt
+
+  @@index([chargesEnabled, payoutsEnabled])
 }

@@ -1,10 +1,16 @@
 import Link from "next/link";
 
 import { requireTenantPermission } from "@/lib/access";
+import { hasPermission, type TenantRole } from "@/lib/permissions";
 
 export default async function AdminPage() {
   const { tenant, membership, session } =
     await requireTenantPermission("catalog.read");
+
+  const canReadFinance = hasPermission(
+    membership.role as TenantRole,
+    "finance.read",
+  );
 
   return (
     <main className="cms-shell cms-shell--narrow">
@@ -43,6 +49,22 @@ export default async function AdminPage() {
           Manage Domains
         </Link>
       </section>
+
+      {canReadFinance ? (
+        <section className="cms-panel">
+          <p className="eyebrow">Commerce & payouts</p>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+            Stripe Connect
+          </h2>
+          <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+            Onboard the tenant merchant account, review payment and payout
+            readiness, and inspect platform-fee settlement status.
+          </p>
+          <Link className="cms-primary-button" href="/admin/commerce">
+            Open Commerce
+          </Link>
+        </section>
+      ) : null}
 
       <section className="cms-panel">
         <p className="eyebrow">Catalog</p>

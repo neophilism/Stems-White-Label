@@ -64,10 +64,23 @@ async function main() {
       [sourceAsset.id],
     );
 
-    const order = await createPendingOrder(tenant.id, quote, true, "buyer@example.com");
+    const order = await createPendingOrder(
+      tenant.id,
+      quote,
+      true,
+      "buyer@example.com",
+      {
+        stripeConnectedAccountId: "acct_checkout_validation",
+        platformFeeCents: 625,
+      },
+    );
     assert.equal(order.status, "PENDING");
     assert.equal(order.items[0]?.termsTextSnapshot, "Immutable checkout terms.");
+    assert.equal(order.stripeConnectedAccountId, "acct_checkout_validation");
+    assert.equal(order.platformFeeCents, 625);
     assert.equal(order.payments[0]?.status, "PENDING");
+    assert.equal(order.payments[0]?.stripeConnectedAccountId, "acct_checkout_validation");
+    assert.equal(order.payments[0]?.platformFeeCents, 625);
 
     await db.licenseVersion.update({
       where: { id: quote.items[0]!.licenseVersionId },

@@ -798,6 +798,153 @@ All earlier migration, unit, queue, CMS, navigation, theme, licensing, checkout,
 secure-delivery, ZIP-package, FFmpeg, TypeScript, and production-build gates
 remain enabled.
 
+
+## Stripe Connect tenant commerce
+
+PR 15 makes commerce tenant-aware through Stripe Connect while preserving the
+immutable licensing, order, and delivery guarantees built in PRs 9-11.
+
+Each tenant has one TenantCommerce record containing:
+
+- connected Stripe account ID
+- account country and default currency
+- details-submitted state
+- charges-enabled state
+- payouts-enabled state
+- current, eventual, past-due, and pending-verification requirements
+- Stripe disabled reason
+- platform fee in basis points
+- onboarding timestamps
+- last Stripe synchronization time
+
+Storefront checkout fails closed. A tenant can accept payments only when its
+connected account has completed onboarding and Stripe reports details submitted,
+charges enabled, payouts enabled, and no disabled reason.
+
+### Connect onboarding
+
+/admin/commerce is available to finance-capable tenant staff. OWNER and ADMIN
+roles can start or continue onboarding; FINANCE can review status, refresh from
+Stripe, and open the connected Express Dashboard.
+
+Connected accounts are created using Stripe's current controller configuration
+with:
+
+- Stripe-hosted Express Dashboard access
+- platform-paid Stripe fees
+- platform liability for payment losses
+- the transfers capability requested for destination-charge settlement
+
+Stripe Account Links use account_onboarding. Because Account Links are single-use,
+the configured refresh URL creates a new Account Link and immediately redirects
+the operator back into onboarding.
+
+The onboarding return page refreshes Stripe account state immediately. A separate
+Connect webhook endpoint also processes account.updated events so changes made in
+Stripe remain synchronized without requiring manual refresh.
+
+### Destination-charge settlement
+
+Checkout Sessions continue to be created on the platform Stripe account. For
+each payment, payment_intent_data contains:
+
+- transfer_data.destination = the tenant connected account
+- application_fee_amount = the tenant's configured platform fee, when non-zero
+- a transfer_group tied to the local Order
+- immutable Order/Tenant/settlement metadata
+
+This PR intentionally does not use on_behalf_of. Under this destination-charge
+configuration the platform is the business of record for the payment, while the
+connected tenant account receives the destination transfer. If a future business
+model requires the tenant to be the settlement merchant, that should be introduced
+as a separately validated Connect charge mode because Stripe capability,
+cross-border, statement-descriptor, and liability behavior changes.
+
+The platform fee is stored in basis points on TenantCommerce. New tenant commerce
+records initialize from STRIPE_PLATFORM_FEE_BPS, which defaults to zero. Tenant
+staff cannot edit this value. PR 18's platform super-admin can provide the
+operator-facing control for per-tenant fee overrides.
+
+At Checkout start, the connected account ID and computed platform-fee cents are
+snapshotted onto both Order and Payment. Later changes to platform fee settings or
+merchant configuration therefore do not rewrite historical settlement records.
+
+### Storefront behavior
+
+The cart quote endpoint exposes only a boolean checkout-readiness signal. It does
+not expose connected-account identifiers or fee configuration.
+
+If the tenant merchant is not READY, the cart displays a payment-unavailable
+message and disables the Stripe Checkout button. The server independently repeats
+the readiness check when creating the Checkout Session, so client-side state can
+never bypass merchant restrictions.
+
+### Connect webhook
+
+Configure a Stripe Connect webhook endpoint at:
+
+/api/stripe/connect/webhook
+
+and set:
+
+STRIPE_CONNECT_WEBHOOK_SECRET
+
+The endpoint currently processes account.updated and persists the Stripe
+requirements/payment/payout readiness snapshot. It shares the existing
+PaymentWebhookEvent idempotency table, so duplicate Connect events are harmless.
+
+The normal platform payment webhook remains:
+
+/api/stripe/webhook
+
+with STRIPE_WEBHOOK_SECRET.
+
+### Configuration
+
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_CONNECT_WEBHOOK_SECRET
+- STRIPE_CONNECT_DEFAULT_COUNTRY (default US)
+- STRIPE_PLATFORM_FEE_BPS (default 0)
+
+The country supplied when a connected account is first created must be a
+two-letter ISO-style country code. It is not changed after the Stripe account
+exists.
+
+### Refund operational note
+
+Destination charges move funds to the connected account. Refund and transfer
+reversal are separate settlement concerns in Stripe. Existing local refund
+records continue to track customer refunds and revoke fully refunded licenses,
+but operators must ensure any Stripe-side refund also reconciles the connected
+transfer and application fee as appropriate. A platform-native refund/reversal
+console can be added alongside later finance operations rather than silently
+changing PR 10's refund semantics.
+
+### Validation
+
+CI adds unit coverage for:
+
+- basis-point validation
+- cent rounding
+- country normalization
+- merchant readiness state
+
+A PostgreSQL Stripe Connect integration test proves:
+
+- onboarding-state persistence
+- transition to READY
+- platform-fee checkout calculation
+- connected-account uniqueness across tenants
+- restricted accounts remain checkout-blocked
+
+The existing checkout integration now also proves connected-account ID and
+platform-fee cents are snapshotted on both Order and Payment.
+
+All earlier migrations, unit tests, queue, CMS, navigation, theme, custom-domain,
+licensing, checkout, delivery, ZIP-package, FFmpeg, TypeScript, and production
+build gates remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.
