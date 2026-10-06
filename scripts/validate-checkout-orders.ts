@@ -138,6 +138,7 @@ async function main() {
 
     console.log("Checkout/order database integration validation passed.");
   } finally {
+    await db.order.deleteMany({ where: { tenantId: tenant.id } });
     await db.tenant.delete({ where: { id: tenant.id } }).catch(() => undefined);
     await db.$disconnect();
   }
