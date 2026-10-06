@@ -99,7 +99,14 @@ export function CheckoutSuccessClient({ sessionId }: { sessionId: string }) {
         ))}
       </div>
 
-      <a className="text-link" href="/#archive">Return to the archive</a>
+      <div className="receipt__actions">
+        {paid ? (
+          <a className="text-link" href="/library">
+            Open customer library
+          </a>
+        ) : null}
+        <a className="text-link" href="/#archive">Return to the archive</a>
+      </div>
     </section>
   );
 }
