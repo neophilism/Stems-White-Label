@@ -47,9 +47,19 @@ export default async function WorkPage({ params }: WorkPageProps) {
   if (!work) notFound();
 
   const stemLabels = work.stemGroups.map((stem) => stem.label);
-  const previewRegistered = work.audioAssets.some(
-    (asset) => asset.kind === "PREVIEW",
+  const hasFullMix = work.audioAssets.some(
+    (asset) =>
+      asset.kind === "PREVIEW" &&
+      asset.stemGroupId === null &&
+      Boolean(asset.storageKey),
   );
+  const playerSourceGroups = work.stemGroups.map((stem) => ({
+    id: stem.id,
+    label: stem.label,
+    hasPreview: stem.audioAssets.some(
+      (asset) => asset.kind === "PREVIEW" && Boolean(asset.storageKey),
+    ),
+  }));
 
   return (
     <>
@@ -96,8 +106,10 @@ export default async function WorkPage({ params }: WorkPageProps) {
           </header>
 
           <ListeningRoom
-            previewRegistered={previewRegistered}
-            sourceGroupCount={work.stemGroups.length}
+            durationMs={work.durationMs}
+            hasFullMix={hasFullMix}
+            sourceGroups={playerSourceGroups}
+            workSlug={work.slug}
           />
 
           <NarrativeSections sections={work.sections} />
