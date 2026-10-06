@@ -15,6 +15,7 @@ export async function POST(request: Request) {
       subtotalCents: quote.subtotalCents,
       items: quote.items.map((item) => ({
         licenseProductId: item.licenseProductId,
+        licenseVersionId: item.licenseVersionId,
         workSlug: item.workSlug,
         workTitle: item.workTitle,
         licenseName: item.licenseName,
