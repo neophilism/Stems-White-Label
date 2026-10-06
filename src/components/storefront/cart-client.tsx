@@ -6,6 +6,7 @@ const CART_KEY = "stems-white-label-cart-v1";
 
 type QuoteItem = {
   licenseProductId: string;
+  licenseVersionId: string;
   workSlug: string;
   workTitle: string;
   licenseName: string;
@@ -108,6 +109,7 @@ export function CartClient({ buyNowId }: { buyNowId: string | null }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           licenseProductIds: ids,
+          acceptedLicenseVersionIds: quote.items.map((item) => item.licenseVersionId),
           termsAccepted: accepted,
           buyerEmail: buyerEmail.trim() || null,
         }),
