@@ -53,6 +53,25 @@ export async function POST(_request: Request, { params }: CompleteRouteProps) {
     });
   }
 
+  if (
+    existingJob?.status === "QUEUED" ||
+    existingJob?.status === "RUNNING"
+  ) {
+    return NextResponse.json(
+      {
+        assetId: asset.id,
+        status: "PROCESSING",
+        job: {
+          id: existingJob.id,
+          status: existingJob.status,
+          attempts: existingJob.attempts,
+          maxAttempts: existingJob.maxAttempts,
+        },
+      },
+      { status: 202 },
+    );
+  }
+
   let stored;
 
   try {
@@ -116,9 +135,11 @@ export async function POST(_request: Request, { params }: CompleteRouteProps) {
       },
       update: {
         status: "QUEUED",
+        attempts: 0,
         runAfter: new Date(),
         lockedAt: null,
         lockedBy: null,
+        startedAt: null,
         completedAt: null,
         lastError: null,
       },
