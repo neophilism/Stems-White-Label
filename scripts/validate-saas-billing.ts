@@ -140,6 +140,30 @@ async function main() {
       assertTenantCanRegisterCustomDomain(tenant.id),
     );
 
+    await db.stripeWebhookEvent.create({
+      data: {
+        scope: "PAYMENTS",
+        providerEventId: "evt_shared_" + suffix,
+        eventType: "checkout.session.completed",
+      },
+    });
+    await db.stripeWebhookEvent.create({
+      data: {
+        scope: "BILLING",
+        providerEventId: "evt_shared_" + suffix,
+        eventType: "checkout.session.completed",
+      },
+    });
+    await assert.rejects(() =>
+      db.stripeWebhookEvent.create({
+        data: {
+          scope: "BILLING",
+          providerEventId: "evt_shared_" + suffix,
+          eventType: "checkout.session.completed",
+        },
+      }),
+    );
+
     console.log("SaaS billing entitlement integration validation passed.");
   } finally {
     await db.tenant.delete({ where: { id: tenant.id } }).catch(() => undefined);
