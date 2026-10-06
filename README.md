@@ -531,6 +531,47 @@ CI now includes:
 - all existing migrations, unit tests, queue/CMS/licensing/checkout/FFmpeg
   integration, TypeScript validation, and production build
 
+
+## Collections and catalog navigation
+
+PR 12 expands the archive without turning it into a commodity marketplace.
+
+Collections remain the primary creator-authored discovery surface. The tenant
+Collection curator can create/edit rooms, set Draft/Published/Archived state,
+assign Works, and explicitly order those Works. CollectionWork.position is the
+public sequence; published Collection pages preserve it exactly while omitting
+unpublished Works.
+
+Public navigation now includes:
+
+- /collections as the dedicated index of published archive rooms
+- previous/next Collection navigation that wraps through the published rooms
+- /archive as a bounded published-Work index
+- optional search across Work title/subtitle/description, musical key, credits,
+  source-group labels, and published Collection names
+- optional filtering to one published Collection
+- Collection-based related Works on individual Work pages
+
+Search is deliberately secondary to authored curation. Results are capped and
+there is no popularity ranking, trending feed, seller comparison, or infinite
+marketplace grid.
+
+Related Works are derived only from shared creator-curated Collections. The
+interface explicitly presents this as editorial proximity rather than an
+algorithmic recommendation system.
+
+Public Collection counts include published Works only; draft/archive material
+does not leak through counts, search, Collection contents, or related navigation.
+
+CI adds a PostgreSQL catalog-navigation integration test proving:
+
+- CollectionWork.position controls the public Collection sequence
+- unpublished Works are excluded from public Collection pages
+- source-group search works
+- credit search works
+- Collection filtering works
+- unpublished source metadata cannot appear in public search
+
 ## Local setup
 
 1. Copy .env.example to .env.

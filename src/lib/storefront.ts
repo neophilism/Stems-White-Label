@@ -1,4 +1,8 @@
 import { signedArtworkPath } from "@/lib/artwork";
+import {
+  collectionNeighborIndexes,
+  normalizeCatalogSearch,
+} from "@/lib/catalog-navigation";
 import { db } from "@/lib/db";
 
 export async function getStorefrontHome(tenantId: string) {
@@ -21,7 +25,11 @@ export async function getStorefrontHome(tenantId: string) {
       take: 6,
       include: {
         _count: {
-          select: { works: true },
+          select: {
+            works: {
+              where: { work: { status: "PUBLISHED" } },
+            },
+          },
         },
       },
     }),
@@ -183,6 +191,198 @@ export async function getPublishedWork(tenantId: string, slug: string) {
     artworkUrl:
       work.artwork?.status === "READY" ? signedArtworkPath(work.artwork.id) : null,
   };
+}
+
+
+export async function getPublishedCollections(tenantId: string) {
+  const collections = await db.collection.findMany({
+    where: { tenantId, status: "PUBLISHED" },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    include: {
+      _count: {
+        select: {
+          works: {
+            where: { work: { status: "PUBLISHED" } },
+          },
+        },
+      },
+      works: {
+        where: { work: { status: "PUBLISHED" } },
+        orderBy: { position: "asc" },
+        take: 4,
+        include: {
+          work: {
+            include: {
+              artwork: { select: { id: true, status: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  return collections.map((collection) => ({
+    ...collection,
+    publishedWorkCount: collection._count.works,
+    previewWorks: collection.works.map((entry) => ({
+      id: entry.work.id,
+      slug: entry.work.slug,
+      title: entry.work.title,
+      artworkUrl:
+        entry.work.artwork?.status === "READY"
+          ? signedArtworkPath(entry.work.artwork.id)
+          : null,
+    })),
+  }));
+}
+
+export async function searchPublishedCatalog(
+  tenantId: string,
+  input: { q?: unknown; collectionSlug?: unknown },
+) {
+  const q = normalizeCatalogSearch(input.q);
+  const collectionSlug =
+    typeof input.collectionSlug === "string"
+      ? input.collectionSlug.trim().slice(0, 120)
+      : "";
+
+  const collection = collectionSlug
+    ? await db.collection.findFirst({
+        where: {
+          tenantId,
+          slug: collectionSlug,
+          status: "PUBLISHED",
+        },
+        select: { id: true, slug: true, title: true },
+      })
+    : null;
+
+  const works = await db.work.findMany({
+    where: {
+      tenantId,
+      status: "PUBLISHED",
+      ...(collection
+        ? { collections: { some: { collectionId: collection.id } } }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: "insensitive" } },
+              { subtitle: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+              { musicalKey: { contains: q, mode: "insensitive" } },
+              {
+                credits: {
+                  some: { displayName: { contains: q, mode: "insensitive" } },
+                },
+              },
+              {
+                stemGroups: {
+                  some: { label: { contains: q, mode: "insensitive" } },
+                },
+              },
+              {
+                collections: {
+                  some: {
+                    collection: {
+                      status: "PUBLISHED",
+                      title: { contains: q, mode: "insensitive" },
+                    },
+                  },
+                },
+              },
+            ],
+          }
+        : {}),
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: 60,
+    include: {
+      primaryArtist: true,
+      artwork: { select: { id: true, status: true } },
+      stemGroups: {
+        orderBy: { position: "asc" },
+        select: { id: true, label: true },
+      },
+      collections: {
+        where: { collection: { status: "PUBLISHED" } },
+        orderBy: { position: "asc" },
+        include: {
+          collection: { select: { id: true, slug: true, title: true } },
+        },
+      },
+    },
+  });
+
+  return {
+    q,
+    collection,
+    works: works.map((work) => ({
+      ...work,
+      artworkUrl:
+        work.artwork?.status === "READY"
+          ? signedArtworkPath(work.artwork.id)
+          : null,
+    })),
+  };
+}
+
+export async function getCollectionNeighbors(
+  tenantId: string,
+  collectionId: string,
+) {
+  const collections = await db.collection.findMany({
+    where: { tenantId, status: "PUBLISHED" },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    select: { id: true, slug: true, title: true },
+  });
+
+  const index = collections.findIndex((collection) => collection.id === collectionId);
+  const indexes = collectionNeighborIndexes(collections.length, index);
+
+  return {
+    previous:
+      indexes.previous === null ? null : (collections[indexes.previous] ?? null),
+    next: indexes.next === null ? null : (collections[indexes.next] ?? null),
+  };
+}
+
+export async function getRelatedPublishedWorks(
+  tenantId: string,
+  workId: string,
+  collectionIds: string[],
+  limit = 3,
+) {
+  if (collectionIds.length === 0) return [];
+
+  const works = await db.work.findMany({
+    where: {
+      tenantId,
+      status: "PUBLISHED",
+      id: { not: workId },
+      collections: {
+        some: { collectionId: { in: collectionIds } },
+      },
+    },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: limit,
+    include: {
+      primaryArtist: true,
+      artwork: { select: { id: true, status: true } },
+      stemGroups: {
+        orderBy: { position: "asc" },
+        select: { id: true, label: true },
+      },
+    },
+  });
+
+  return works.map((work) => ({
+    ...work,
+    artworkUrl:
+      work.artwork?.status === "READY"
+        ? signedArtworkPath(work.artwork.id)
+        : null,
+  }));
 }
 
 export function formatTechnicalSpec(asset: {
