@@ -19,6 +19,7 @@ export function SiteHeader({ tenantName }: SiteHeaderProps) {
           <Link href="/#archive">Archive</Link>
           <Link href="/#collections">Collections</Link>
           <Link href="/#licensing">Licensing</Link>
+          <Link href="/cart">Cart</Link>
         </nav>
       </div>
     </header>
