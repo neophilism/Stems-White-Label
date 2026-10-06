@@ -3,24 +3,43 @@
 A multi-tenant white-label platform for artists and labels to present and license
 musical source material in a bespoke storefront rather than a commodity marketplace.
 
-## PR 1 foundation
+## Platform foundation
 
-The initial platform foundation includes:
+The platform includes:
 
 - Next.js and TypeScript application shell
-- PostgreSQL and Prisma schema plus initial migration
+- PostgreSQL and Prisma
 - Auth.js/NextAuth database-backed authentication
-- multi-tenant Tenant, TenantDomain, and TenantMembership models
-- hostname-based tenant resolution
-- tenant roles and permission checks
+- hostname-resolved tenants and tenant-scoped roles
 - Unsealed Records seed tenant
-- protected tenant-admin shell
-- health endpoint
+- protected tenant administration
 - local PostgreSQL via Docker Compose
 - GitHub Actions validation
 
-The music-domain models such as Work, Collection, StemGroup, and AudioAsset are
-intentionally deferred to PR 2.
+## Core music domain
+
+The catalog model is deliberately presentation-neutral and creator-controlled:
+
+- Artist
+- Collection
+- Work
+- WorkCredit
+- CollectionWork
+- StemGroup
+- AudioAsset
+
+A StemGroup is an arbitrary musically meaningful source grouping. It does not
+represent an individual instrument unless the creator wants it to. Examples can
+include Drums, Horn Section 1, Horn Section 2, Orchestra, Choir, Textures, or
+any other custom grouping. Optional parent/child relationships allow a creator
+to group related sections later without forcing nested structure.
+
+Works use the lifecycle:
+
+DRAFT -> PROCESSING -> READY -> PUBLISHED -> ARCHIVED
+
+Supported transitions also allow a published Work to return to READY for
+unpublishing and an archived Work to return to DRAFT for restoration.
 
 ## Local setup
 
@@ -29,7 +48,8 @@ intentionally deferred to PR 2.
 3. Run npm install.
 4. Run npm run db:migrate.
 5. Run npm run db:seed.
-6. Run npm run dev.
+6. Run npm test.
+7. Run npm run dev.
 
 The local tenant resolver falls back to DEFAULT_TENANT_SLUG, which defaults to
 unsealed-records.
