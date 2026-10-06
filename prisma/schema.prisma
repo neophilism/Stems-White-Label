@@ -183,6 +183,12 @@ enum DomainTlsStatus {
   FAILED
 }
 
+enum StripeWebhookScope {
+  PAYMENTS
+  CONNECT
+  BILLING
+}
+
 enum SaasSubscriptionStatus {
   UNSUBSCRIBED
   TRIALING
@@ -960,4 +966,17 @@ model TenantSubscription {
 
   @@index([status, currentPeriodEnd])
   @@index([stripePriceId])
+}
+
+
+model StripeWebhookEvent {
+  id              String             @id @default(cuid())
+  scope           StripeWebhookScope
+  providerEventId String
+  eventType       String
+  processedAt     DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+
+  @@unique([scope, providerEventId])
+  @@index([scope, processedAt])
 }
