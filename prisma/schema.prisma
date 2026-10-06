@@ -102,6 +102,13 @@ enum PaymentStatus {
   PARTIALLY_REFUNDED
 }
 
+enum DownloadPackageStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -111,6 +118,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   memberships   TenantMembership[]
+  customerProfiles Customer[]
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 }
@@ -171,6 +179,8 @@ model Tenant {
   orders          Order[]
   payments        Payment[]
   purchaseLicenses PurchaseLicense[]
+  downloadEntitlements DownloadEntitlement[]
+  downloadPackages DownloadPackage[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -393,6 +403,8 @@ model AudioAsset {
   sourceAsset        AudioAsset?      @relation("AudioAssetDerivatives", fields: [sourceAssetId], references: [id], onDelete: Cascade)
   derivatives        AudioAsset[]     @relation("AudioAssetDerivatives")
   processingJobs     ProcessingJob[]
+  downloadEntitlements DownloadEntitlement[]
+  orderItemAssets OrderItemAsset[]
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -508,11 +520,13 @@ model LicenseProductStem {
 model Customer {
   id               String   @id @default(cuid())
   tenantId         String
+  userId           String?
   email            String
   normalizedEmail  String
   name             String?
   stripeCustomerId String?
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   orders           Order[]
   purchaseLicenses PurchaseLicense[]
   createdAt        DateTime @default(now())
@@ -520,7 +534,9 @@ model Customer {
 
   @@unique([tenantId, normalizedEmail])
   @@unique([tenantId, stripeCustomerId])
+  @@unique([tenantId, userId])
   @@index([tenantId, createdAt])
+  @@index([userId])
 }
 
 model Order {
@@ -576,6 +592,7 @@ model OrderItem {
   licenseVersion             LicenseVersion @relation(fields: [licenseVersionId], references: [id], onDelete: Restrict)
   work                       Work            @relation(fields: [workId], references: [id], onDelete: Restrict)
   purchaseLicense            PurchaseLicense?
+  deliverableAssets          OrderItemAsset[]
   createdAt                  DateTime        @default(now())
 
   @@index([orderId])
@@ -629,11 +646,15 @@ model PurchaseLicense {
   licenseVersionId String
   acceptedAt       DateTime
   termsTextSnapshot String        @db.Text
+  revokedAt        DateTime?
+  revocationReason String?
   tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
   orderItem        OrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
   customer         Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
   licenseVersion   LicenseVersion @relation(fields: [licenseVersionId], references: [id], onDelete: Restrict)
+  downloadEntitlements DownloadEntitlement[]
+  downloadPackage DownloadPackage?
   createdAt        DateTime       @default(now())
 
   @@index([tenantId, customerId, createdAt])
@@ -651,4 +672,65 @@ model PaymentWebhookEvent {
 
   @@unique([provider, providerEventId])
   @@index([processedAt])
+}
+
+
+model DownloadEntitlement {
+  id                String          @id @default(cuid())
+  tenantId          String
+  purchaseLicenseId String
+  audioAssetId      String
+  fileNameSnapshot  String
+  downloadsCount    Int             @default(0)
+  lastDownloadedAt  DateTime?
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseLicense   PurchaseLicense @relation(fields: [purchaseLicenseId], references: [id], onDelete: Cascade)
+  audioAsset        AudioAsset      @relation(fields: [audioAssetId], references: [id], onDelete: Restrict)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([purchaseLicenseId, audioAssetId])
+  @@index([tenantId, createdAt])
+  @@index([audioAssetId])
+}
+
+model DownloadPackage {
+  id                String                @id @default(cuid())
+  tenantId          String
+  purchaseLicenseId String                @unique
+  status            DownloadPackageStatus @default(QUEUED)
+  storageKey        String?               @unique
+  fileName          String
+  sizeBytes         BigInt?
+  checksumSha256    String?
+  attempts          Int                   @default(0)
+  maxAttempts       Int                   @default(3)
+  runAfter          DateTime              @default(now())
+  lockedAt          DateTime?
+  lockedBy          String?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  lastError         String?               @db.Text
+  tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseLicense   PurchaseLicense       @relation(fields: [purchaseLicenseId], references: [id], onDelete: Cascade)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([status, runAfter, createdAt])
+  @@index([tenantId, status])
+}
+
+
+model OrderItemAsset {
+  orderItemId      String
+  audioAssetId     String
+  fileNameSnapshot String
+  kindSnapshot     AudioAssetKind
+  stemLabelSnapshot String?
+  orderItem        OrderItem  @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  audioAsset       AudioAsset @relation(fields: [audioAssetId], references: [id], onDelete: Restrict)
+  createdAt        DateTime   @default(now())
+
+  @@id([orderItemId, audioAssetId])
+  @@index([audioAssetId])
 }

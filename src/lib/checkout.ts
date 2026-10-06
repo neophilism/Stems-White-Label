@@ -21,6 +21,12 @@ export type CheckoutQuoteItem = {
   seatLimit: number | null;
   projectLimit: number | null;
   selectedStemLabels: string[];
+  deliverableAssets: Array<{
+    id: string;
+    fileName: string;
+    kind: "MASTER" | "STEM";
+    stemLabel: string | null;
+  }>;
 };
 
 export function normalizeCartIds(value: unknown) {
@@ -49,9 +55,30 @@ export async function quoteLicenseProducts(tenantId: string, rawIds: unknown) {
       work: { status: "PUBLISHED" },
     },
     include: {
-      work: { select: { id: true, slug: true, title: true } },
+      work: {
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          audioAssets: {
+            where: {
+              status: "READY",
+              storageKey: { not: null },
+              kind: { in: ["MASTER", "STEM"] },
+            },
+            orderBy: { createdAt: "desc" },
+            select: {
+              id: true,
+              fileName: true,
+              kind: true,
+              stemGroupId: true,
+              stemGroup: { select: { label: true } },
+            },
+          },
+        },
+      },
       selectedStems: {
-        include: { stemGroup: { select: { label: true } } },
+        include: { stemGroup: { select: { id: true, label: true } } },
       },
       versions: {
         where: { retiredAt: null },
@@ -68,6 +95,35 @@ export async function quoteLicenseProducts(tenantId: string, rawIds: unknown) {
     const product = byId.get(id)!;
     const version = product.versions[0];
     if (!version) throw new Error("A selected license has no current version.");
+
+    const selectedStemIds = new Set(
+      product.selectedStems.map((entry) => entry.stemGroupId),
+    );
+
+    const candidateAssets =
+      product.scope === "WORK"
+        ? product.work.audioAssets.filter((asset) => asset.kind === "MASTER")
+        : product.work.audioAssets.filter(
+            (asset) =>
+              asset.kind === "STEM" &&
+              asset.stemGroupId &&
+              (product.scope === "ALL_STEMS" ||
+                selectedStemIds.has(asset.stemGroupId)),
+          );
+
+    const seenStemGroups = new Set<string>();
+    const deliverableAssets = candidateAssets.filter((asset) => {
+      if (asset.kind === "MASTER") return true;
+      if (!asset.stemGroupId || seenStemGroups.has(asset.stemGroupId)) return false;
+      seenStemGroups.add(asset.stemGroupId);
+      return true;
+    });
+
+    if (deliverableAssets.length === 0) {
+      throw new Error(
+        product.name + " has no ready original files available for delivery.",
+      );
+    }
 
     return {
       licenseProductId: product.id,
@@ -88,6 +144,12 @@ export async function quoteLicenseProducts(tenantId: string, rawIds: unknown) {
       seatLimit: version.seatLimit,
       projectLimit: version.projectLimit,
       selectedStemLabels: product.selectedStems.map((entry) => entry.stemGroup.label),
+      deliverableAssets: deliverableAssets.map((asset) => ({
+        id: asset.id,
+        fileName: asset.fileName,
+        kind: asset.kind as "MASTER" | "STEM",
+        stemLabel: asset.stemGroup?.label ?? null,
+      })),
     };
   });
 
@@ -99,6 +161,24 @@ export async function quoteLicenseProducts(tenantId: string, rawIds: unknown) {
     currency: items[0]!.currency,
     subtotalCents: items.reduce((sum, item) => sum + item.priceCents, 0),
   };
+}
+
+export function assertAcceptedLicenseVersions(
+  quote: { items: Array<{ licenseVersionId: string }> },
+  rawAcceptedVersionIds: unknown,
+) {
+  const accepted = Array.isArray(rawAcceptedVersionIds)
+    ? new Set(rawAcceptedVersionIds.filter((id): id is string => typeof id === "string"))
+    : new Set<string>();
+
+  if (
+    accepted.size !== quote.items.length ||
+    quote.items.some((item) => !accepted.has(item.licenseVersionId))
+  ) {
+    throw new Error(
+      "License terms changed since review. Please review the current version before checkout.",
+    );
+  }
 }
 
 export async function createPendingOrder(
@@ -137,6 +217,14 @@ export async function createPendingOrder(
           seatLimit: item.seatLimit,
           projectLimit: item.projectLimit,
           selectedStemLabelsSnapshot: item.selectedStemLabels,
+          deliverableAssets: {
+            create: item.deliverableAssets.map((asset) => ({
+              audioAssetId: asset.id,
+              fileNameSnapshot: asset.fileName,
+              kindSnapshot: asset.kind,
+              stemLabelSnapshot: asset.stemLabel,
+            })),
+          },
         })),
       },
       payments: {

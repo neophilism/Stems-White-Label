@@ -421,6 +421,116 @@ CI adds a PostgreSQL checkout integration test that validates immutable order
 snapshots, idempotent paid-order fulfillment, Customer normalization, exact
 LicenseVersion grants, partial refunds, and full refunds.
 
+
+## Secure delivery and customer library
+
+PR 11 turns paid PurchaseLicense records into a persistent, authenticated
+customer archive without exposing archival source objects publicly.
+
+### Customer authentication
+
+The existing NextAuth/Auth.js database-session setup now also uses the built-in
+Email provider for passwordless customer access. Administrators continue to use
+GitHub. Customer email sign-in is accepted only when the current tenant already
+has a paid Customer record for that normalized email.
+
+Required production configuration:
+
+- EMAIL_SERVER: SMTP connection string used by the NextAuth Email provider
+- EMAIL_FROM: sender identity for single-use sign-in links
+- NEXTAUTH_SECRET / NEXTAUTH_URL as before
+
+Customer identity is tenant-scoped. On first successful library access the
+authenticated User is bound to the matching Customer, while the normalized
+purchase email remains the recovery/lookup identity.
+
+### Frozen delivery manifest
+
+Checkout now freezes not only LicenseVersion but the exact original source
+files being sold. OrderItemAsset rows reference the READY MASTER/STEM assets
+selected server-side at checkout, so those source records cannot be deleted
+between review, payment, and delivery.
+
+Scope selection is deterministic:
+
+- WORK: the current READY master source
+- ALL_STEMS: the newest READY original STEM for each source group
+- SELECTED_STEMS: the newest READY original STEM for each licensed source group
+
+A checkout is rejected if its license scope has no ready original files.
+
+After the verified Stripe payment webhook succeeds, one DownloadEntitlement is
+created per frozen OrderItemAsset. Duplicate payment fulfillment remains
+idempotent and does not duplicate entitlements.
+
+A full refund preserves the legal/audit records but marks PurchaseLicense
+revoked. Source-file and package download endpoints re-check revocation and
+order state on every request.
+
+### Expiring private downloads
+
+Individual original downloads are available only through authenticated library
+routes. The application verifies tenant, signed-in Customer, PurchaseLicense,
+refund/revocation state, DownloadEntitlement, and current asset availability
+before issuing a short-lived S3-compatible signed GET URL.
+
+DOWNLOAD_URL_TTL_SECONDS controls signed download lifetime and defaults to five
+minutes. Every individual re-download increments the entitlement download count
+and records lastDownloadedAt.
+
+### License records
+
+Every PurchaseLicense exposes a downloadable LICENSE.txt generated from the
+immutable purchase snapshot: order/purchase IDs, acceptance timestamp, customer
+email, Work/license/version, purchase price, rights/limits, selected source
+groups, and the exact accepted terms.
+
+### ZIP packaging
+
+Customers can request a ZIP package for each active PurchaseLicense. Package
+generation is durable and asynchronous rather than performed in the web request.
+
+Run the package worker with:
+
+npm run worker:packages
+
+The worker uses PostgreSQL row locking with SKIP LOCKED, retries with exponential
+backoff, stale-lock recovery, streaming ZIP generation, and multipart private
+object-storage upload. Packages include LICENSE.txt plus the licensed original
+files. Package objects remain private and are downloaded only through a freshly
+authorized expiring URL.
+
+Worker settings:
+
+- PACKAGE_WORKER_POLL_MS (default 2000)
+- PACKAGE_WORKER_STALE_MINUTES (default 30)
+
+### Customer library
+
+/library shows:
+
+- purchased Works and exact license versions
+- order and acceptance metadata
+- downloadable license records
+- each entitled original file
+- repeat-download counts
+- ZIP build/status/download controls
+- revoked state after full refund
+
+PR 12 can now focus purely on richer Collections/catalog navigation rather than
+commerce or delivery plumbing.
+
+### Validation
+
+CI now includes:
+
+- checkout entitlement creation and full-refund revocation assertions
+- secure-delivery PostgreSQL integration
+- package queue claim/retry validation
+- real ZIP creation plus unzip integrity testing
+- all existing migrations, unit tests, queue/CMS/licensing/checkout/FFmpeg
+  integration, TypeScript validation, and production build
+
 ## Local setup
 
 1. Copy .env.example to .env.

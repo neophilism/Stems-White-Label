@@ -16,7 +16,10 @@ export async function markOrderPaid(input: {
   return db.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { id: input.orderId },
-      include: { items: true, payments: true },
+      include: {
+        items: { include: { deliverableAssets: true } },
+        payments: true,
+      },
     });
     if (!order) throw new Error("Order not found.");
 
@@ -75,7 +78,7 @@ export async function markOrderPaid(input: {
     }
 
     for (const item of order.items) {
-      await tx.purchaseLicense.upsert({
+      const purchaseLicense = await tx.purchaseLicense.upsert({
         where: { orderItemId: item.id },
         update: {},
         create: {
@@ -88,6 +91,24 @@ export async function markOrderPaid(input: {
           termsTextSnapshot: item.termsTextSnapshot,
         },
       });
+
+      for (const asset of item.deliverableAssets) {
+        await tx.downloadEntitlement.upsert({
+          where: {
+            purchaseLicenseId_audioAssetId: {
+              purchaseLicenseId: purchaseLicense.id,
+              audioAssetId: asset.audioAssetId,
+            },
+          },
+          update: {},
+          create: {
+            tenantId: order.tenantId,
+            purchaseLicenseId: purchaseLicense.id,
+            audioAssetId: asset.audioAssetId,
+            fileNameSnapshot: asset.fileNameSnapshot,
+          },
+        });
+      }
     }
 
     return tx.order.findUniqueOrThrow({
@@ -194,6 +215,19 @@ export async function recordRefund(input: {
         refundedAt: fullRefund ? new Date() : null,
       },
     });
+
+    if (fullRefund) {
+      await tx.purchaseLicense.updateMany({
+        where: {
+          orderId: order.id,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(),
+          revocationReason: "Order fully refunded.",
+        },
+      });
+    }
 
     return tx.order.findUniqueOrThrow({
       where: { id: order.id },

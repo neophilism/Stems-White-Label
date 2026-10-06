@@ -18,7 +18,10 @@
     "test:queue-integration": "tsx scripts/validate-processing-queue.ts",
     "test:cms-integration": "tsx scripts/validate-catalog-cms.ts",
     "test:licensing-integration": "tsx scripts/validate-licensing.ts",
-    "test:checkout-integration": "tsx scripts/validate-checkout-orders.ts"
+    "test:checkout-integration": "tsx scripts/validate-checkout-orders.ts",
+    "worker:packages": "tsx scripts/download-package-worker.ts",
+    "test:delivery-integration": "tsx scripts/validate-secure-delivery.ts",
+    "test:package-integration": "tsx scripts/validate-download-package.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
@@ -29,7 +32,10 @@
     "react-dom": "^19.2.0",
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
-    "stripe": "^18.5.0"
+    "stripe": "^18.5.0",
+    "@aws-sdk/lib-storage": "^3.0.0",
+    "archiver": "^8.0.0",
+    "nodemailer": "^7.0.7"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",
@@ -39,7 +45,8 @@
     "eslint-config-next": "^16.0.0",
     "prisma": "^6.16.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@types/archiver": "^8.0.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -23,6 +23,20 @@ async function main() {
     const stem = await db.stemGroup.create({
       data: { workId: work.id, slug: "horns", label: "Horn Section" },
     });
+    const sourceAsset = await db.audioAsset.create({
+      data: {
+        tenantId: tenant.id,
+        workId: work.id,
+        stemGroupId: stem.id,
+        kind: "STEM",
+        status: "READY",
+        fileName: "horn-section.wav",
+        storageKey: "validation/" + suffix + "/horn-section.wav",
+        mimeType: "audio/wav",
+        sizeBytes: BigInt(1024),
+      },
+    });
+
     const product = await db.licenseProduct.create({
       data: {
         tenantId: tenant.id,
@@ -45,6 +59,10 @@ async function main() {
     const quote = await quoteLicenseProducts(tenant.id, [product.id]);
     assert.equal(quote.subtotalCents, 12500);
     assert.deepEqual(quote.items[0]?.selectedStemLabels, ["Horn Section"]);
+    assert.deepEqual(
+      quote.items[0]?.deliverableAssets.map((asset) => asset.id),
+      [sourceAsset.id],
+    );
 
     const order = await createPendingOrder(tenant.id, quote, true, "buyer@example.com");
     assert.equal(order.status, "PENDING");
@@ -65,8 +83,12 @@ async function main() {
       },
     });
 
-    const stored = await db.orderItem.findFirstOrThrow({ where: { orderId: order.id } });
+    const stored = await db.orderItem.findFirstOrThrow({
+      where: { orderId: order.id },
+      include: { deliverableAssets: true },
+    });
     assert.equal(stored.unitPriceCents, 12500);
+    assert.equal(stored.deliverableAssets[0]?.audioAssetId, sourceAsset.id);
     assert.equal(stored.termsTextSnapshot, "Immutable checkout terms.");
 
     const paid = await markOrderPaid({
@@ -86,8 +108,13 @@ async function main() {
       stripePaymentIntentId: "pi_validation",
     });
     const grants = await db.purchaseLicense.count({ where: { orderId: order.id } });
+    const entitlements = await db.downloadEntitlement.findMany({
+      where: { purchaseLicense: { orderId: order.id } },
+    });
     assert.equal(paidAgain.status, "PAID");
     assert.equal(grants, 1);
+    assert.equal(entitlements.length, 1);
+    assert.equal(entitlements[0]?.audioAssetId, sourceAsset.id);
 
     const partial = await recordRefund({
       orderId: order.id,
@@ -103,9 +130,15 @@ async function main() {
     });
     assert.equal(fullyRefunded.status, "REFUNDED");
     assert.equal(fullyRefunded.payments[0]?.refundedCents, 12500);
+    const revoked = await db.purchaseLicense.findFirstOrThrow({
+      where: { orderId: order.id },
+    });
+    assert.ok(revoked.revokedAt);
+    assert.equal(revoked.revocationReason, "Order fully refunded.");
 
     console.log("Checkout/order database integration validation passed.");
   } finally {
+    await db.order.deleteMany({ where: { tenantId: tenant.id } });
     await db.tenant.delete({ where: { id: tenant.id } }).catch(() => undefined);
     await db.$disconnect();
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  assertAcceptedLicenseVersions,
   createPendingOrder,
   normalizeBuyerEmail,
   quoteLicenseProducts,
@@ -17,19 +18,7 @@ export async function POST(request: Request) {
 
   try {
     const quote = await quoteLicenseProducts(tenant.id, body?.licenseProductIds);
-    const acceptedVersionIds = Array.isArray(body?.acceptedLicenseVersionIds)
-      ? new Set(body.acceptedLicenseVersionIds.filter((id: unknown): id is string => typeof id === "string"))
-      : new Set<string>();
-
-    if (
-      acceptedVersionIds.size !== quote.items.length ||
-      quote.items.some((item) => !acceptedVersionIds.has(item.licenseVersionId))
-    ) {
-      return NextResponse.json(
-        { error: "License terms changed since review. Please review the current version before checkout." },
-        { status: 409 },
-      );
-    }
+    assertAcceptedLicenseVersions(quote, body?.acceptedLicenseVersionIds);
 
     const buyerEmail = normalizeBuyerEmail(body?.buyerEmail);
     const order = await createPendingOrder(
