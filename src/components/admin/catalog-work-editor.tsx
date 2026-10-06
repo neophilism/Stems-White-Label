@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
   type ChangeEvent,
+  type ReactNode,
 } from "react";
 
 type Asset = {
@@ -416,6 +417,13 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
           </div>
         </div>
         <div className="cms-header-actions">
+          <a
+            className="cms-secondary-button"
+            href={"/admin/catalog/works/" + work.id + "/preview"}
+            target="_blank"
+          >
+            Preview ↗
+          </a>
           {work.status === "PUBLISHED" ? (
             <a className="cms-secondary-button" href={"/works/" + work.slug} target="_blank">
               Open public Work ↗
@@ -1106,7 +1114,7 @@ function RepeaterSection({
   title: string;
   addLabel: string;
   onAdd: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   const id = title === "Credits" ? "credits" : "editorial";
   return (
