@@ -158,14 +158,13 @@ export async function downloadPrivateObjectToFile(
     throw new Error("Stored object has no body.");
   }
 
-  const body =
-    object.Body instanceof Readable
-      ? object.Body
-      : Readable.fromWeb(
-          object.Body.transformToWebStream() as unknown as ReadableStream,
-        );
+  if (!(object.Body instanceof Readable)) {
+    throw new Error(
+      "Object storage returned a non-Node stream in the asset worker runtime.",
+    );
+  }
 
-  await pipeline(body, createWriteStream(destinationPath));
+  await pipeline(object.Body, createWriteStream(destinationPath));
 }
 
 export async function uploadFileToPrivateStorage(input: {
