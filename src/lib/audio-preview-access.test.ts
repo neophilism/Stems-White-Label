@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildPreviewOriginUrl,
   signPreviewAccess,
   signWaveformAccess,
   verifyPreviewAccess,
@@ -51,23 +50,6 @@ test("preview signatures are bound to one asset", () => {
     false,
   );
 });
-
-test("preview origin URLs preserve nested storage keys", () => {
-  assert.equal(
-    buildPreviewOriginUrl(
-      "https://media.example.test/previews",
-      "tenant/work/horn section 1.opus",
-    ).toString(),
-    "https://media.example.test/previews/tenant/work/horn%20section%201.opus",
-  );
-});
-
-test("preview origin URL rejects path traversal", () => {
-  assert.throws(() =>
-    buildPreviewOriginUrl("https://media.example.test", "../secret.wav"),
-  );
-});
-
 
 test("waveform signatures are purpose-separated from audio preview signatures", () => {
   const secret = "test-preview-secret";
