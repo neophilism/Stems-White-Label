@@ -88,6 +88,49 @@ The listening room truthfully reports whether a preview source is registered; it
 does not invent demo audio or expose private source files. The synchronized player
 and its audio engine are the next milestone.
 
+
+## Synchronized multitrack player
+
+The Work listening room uses one Web Audio API clock for every decoded preview
+source. All available preview buffers are scheduled against the same start time
+and playback offset, so source groups stay synchronized when visitors mute, solo,
+combine, seek, pause, and resume.
+
+The player supports:
+
+- Full Mix mode when a Work has a full-mix PREVIEW asset
+- All Sources reconstruction from available StemGroup PREVIEW assets
+- arbitrary creator-defined source groups
+- mute per source group
+- multiple simultaneous solo selections
+- seek and pause/resume without losing alignment
+- master volume
+- reset-to-full-mix behavior
+- mobile layouts and touch-friendly controls
+- explicit loading and error states
+
+Only AudioAssets with kind PREVIEW, status READY, a storage key, and a published
+parent Work can enter the playback manifest. Original MASTER and STEM assets are
+never returned by the player API.
+
+### Preview delivery configuration
+
+Set PREVIEW_URL_SECRET to a long random value. If omitted, NEXTAUTH_SECRET is used
+as the signing secret.
+
+Set PREVIEW_ORIGIN_BASE_URL to a server-reachable preview-only object origin.
+PREVIEW_ORIGIN_BEARER_TOKEN is optional when that origin accepts bearer
+authentication.
+
+The browser receives only short-lived signed application URLs. Storage keys and
+origin credentials remain server-side. The application validates the signature,
+tenant, published Work, PREVIEW asset kind, and READY status before proxying the
+preview.
+
+PR 7 will automate creation and storage of these preview derivatives. The player
+and secure preview boundary themselves are functional now for any registered
+PREVIEW assets.
+
 ## Local setup
 
 1. Copy .env.example to .env.

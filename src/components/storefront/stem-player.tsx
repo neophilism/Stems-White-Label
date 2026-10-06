@@ -62,6 +62,7 @@ export function StemPlayer({
   const offsetRef = useRef(0);
   const durationRef = useRef(durationMs ? durationMs / 1000 : 0);
   const animationRef = useRef<number | null>(null);
+  const playingRef = useRef(false);
 
   const previewGroupCount = sourceGroups.filter(
     (source) => source.hasPreview,
@@ -92,7 +93,7 @@ export function StemPlayer({
   function currentPosition() {
     const context = contextRef.current;
 
-    if (!context || !isPlaying) {
+    if (!context || !playingRef.current) {
       return offsetRef.current;
     }
 
@@ -291,6 +292,7 @@ export function StemPlayer({
         stopSources();
         offsetRef.current = durationRef.current;
         setPositionSeconds(durationRef.current);
+        playingRef.current = false;
         setIsPlaying(false);
         stopAnimation();
         return;
@@ -343,6 +345,7 @@ export function StemPlayer({
     }
 
     startedAtRef.current = scheduledStart - offset;
+    playingRef.current = true;
     setIsPlaying(true);
     startAnimation();
   }
@@ -355,6 +358,7 @@ export function StemPlayer({
 
     offsetRef.current = nextOffset;
     setPositionSeconds(nextOffset);
+    playingRef.current = false;
     setIsPlaying(false);
   }
 
@@ -380,6 +384,7 @@ export function StemPlayer({
     stopSources();
     offsetRef.current = clamped;
     setPositionSeconds(clamped);
+    playingRef.current = false;
     setIsPlaying(false);
 
     if (wasPlaying) {
