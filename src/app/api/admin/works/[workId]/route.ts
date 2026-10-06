@@ -24,6 +24,7 @@ async function findTenantWork(tenantId: string, workId: string) {
     where: { id: workId, tenantId },
     include: {
       primaryArtist: true,
+      artwork: true,
       credits: { orderBy: { position: "asc" } },
       sections: { orderBy: { position: "asc" } },
       stemGroups: {
