@@ -667,6 +667,137 @@ CI adds unit tests for preset resolution and injection-safe validation, logo and
 favicon validation, plus a PostgreSQL integration test proving tenant isolation,
 CUSTOM persistence, CSS-variable resolution, and active brand-asset linkage.
 
+
+## Custom domains
+
+PR 14 turns TenantDomain into a verified custom-domain control plane rather than
+treating any database hostname as trusted.
+
+A custom hostname passes three independent gates before it can route a tenant:
+
+1. Ownership: the tenant publishes a TXT challenge.
+2. Routing: DNS must point only to the platform targets configured by the
+   deployment.
+3. HTTPS/TLS: the application performs a real TLS handshake with SNI and normal
+   certificate validation.
+
+Only domains with VERIFIED ownership, READY routing, and READY TLS are accepted
+by the public tenant resolver. An unknown, unverified, incorrectly routed, or
+certificate-invalid hostname resolves no tenant.
+
+Existing TenantDomain rows are backfilled as trusted during the migration because
+they were already active routing assignments before PR 14. Newly registered
+domains always begin pending.
+
+### Ownership records
+
+For a hostname such as:
+
+stems.artist.example
+
+the domain manager displays a TXT record at:
+
+_stems-verify.stems.artist.example
+
+with a cryptographically random value in this form:
+
+stems-verification=<token>
+
+CUSTOM_DOMAIN_VERIFY_PREFIX changes the _stems-verify prefix when required.
+
+Unverified hostname claims expire. DOMAIN_CLAIM_TTL_HOURS defaults to 24 hours,
+which prevents an abandoned database claim from permanently blocking the actual
+domain owner. A tenant that proves ownership before takeover converts the claim
+to a permanent verified assignment.
+
+### Routing targets
+
+The deployment must configure at least one platform routing target:
+
+- CUSTOM_DOMAIN_CNAME_TARGET
+- CUSTOM_DOMAIN_IPV4_TARGETS
+- CUSTOM_DOMAIN_IPV6_TARGETS
+
+CNAME is normally the preferred setup for subdomains. Apex/root domains can use
+the configured A/AAAA targets when the DNS provider does not expose CNAME
+flattening as a CNAME response.
+
+For CNAME routing, the configured target must match the domain's CNAME record.
+For A/AAAA routing, every resolved address must be one of the configured platform
+addresses. The application will not perform the TLS probe until this routing
+check succeeds, preventing arbitrary-host server-side probing.
+
+CUSTOM_DOMAIN_RESERVED_SUFFIXES is a comma-separated list of platform namespaces
+that tenants are not allowed to claim. The hostname from NEXTAUTH_URL is also
+reserved automatically.
+
+CUSTOM_DOMAIN_MAX_PER_TENANT defaults to 10 custom claims. Managed legacy/platform
+domain rows do not consume that quota.
+
+### TLS readiness
+
+After ownership and routing are valid, the domain verifier connects to port 443
+using the custom hostname as SNI with rejectUnauthorized enabled. The domain is
+marked TLS READY only after the certificate chain and hostname validate normally.
+
+This application does not mint certificates itself. The hosting/CDN platform
+terminating HTTPS at CUSTOM_DOMAIN_CNAME_TARGET or the configured platform IPs
+must provision the certificate. Until it does, the domain manager shows routing
+READY and TLS PENDING, and re-running verification checks again.
+
+CUSTOM_DOMAIN_TLS_TIMEOUT_MS defaults to 5000 ms.
+
+### Primary domain and hostname routing
+
+A database partial unique index enforces at most one primary TenantDomain per
+tenant. The admin UI allows only a fully verified HTTPS-ready domain to become
+primary, and the current primary cannot be deleted until another one is selected.
+
+The verified primary hostname is also used as the tenant's public Next.js
+metadataBase.
+
+The tenant resolver no longer trusts x-forwarded-host by default. It uses Host
+unless TRUST_X_FORWARDED_HOST=true is explicitly enabled for a deployment behind
+a trusted proxy that rewrites Host.
+
+Local development continues to use DEFAULT_TENANT_SLUG for localhost and
+127.0.0.1.
+
+### Domain administration
+
+/admin/domains provides:
+
+- hostname registration
+- exact TXT ownership instructions
+- exact CNAME or A/AAAA routing instructions
+- ownership status
+- routing status
+- HTTPS/TLS status
+- last-check and claim-expiry timestamps
+- retryable DNS/HTTPS verification
+- primary-domain selection
+- safe removal of non-primary custom domains
+
+Domain operations require tenant.manage, so only OWNER and ADMIN roles can modify
+routing.
+
+### Validation
+
+CI adds unit coverage for hostname normalization, exact TXT challenge matching,
+CNAME routing, and strict A/AAAA routing.
+
+A PostgreSQL integration test proves:
+
+- a fully verified TLS-ready hostname resolves the correct tenant
+- a pending hostname cannot resolve a tenant
+- primary-domain switching is atomic
+- expired unverified claims can be reclaimed by the actual owner
+- the database rejects two simultaneous primary domains for one tenant
+
+All earlier migration, unit, queue, CMS, navigation, theme, licensing, checkout,
+secure-delivery, ZIP-package, FFmpeg, TypeScript, and production-build gates
+remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.
