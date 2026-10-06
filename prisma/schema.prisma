@@ -1065,8 +1065,8 @@ model PlatformAuditLog {
   reason      String?  @db.Text
   before      Json?
   after       Json?
-  actor       User?    @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actor       User?    @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
   createdAt   DateTime @default(now())
 
   @@index([createdAt])
