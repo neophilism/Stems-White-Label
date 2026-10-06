@@ -1,3 +1,5 @@
+import type Stripe from "stripe";
+
 import { db } from "@/lib/db";
 import {
   ensureTenantSubscription,
@@ -114,7 +116,7 @@ export async function refreshTenantStripeSubscription(tenantId: string) {
 
 export async function syncSubscriptionFromCheckoutSession(
   tenantId: string,
-  session: import("stripe").default.Checkout.Session,
+  session: Stripe.Checkout.Session,
 ) {
   const subscriptionId = stringId(session.subscription);
   const customerId = stringId(session.customer);
