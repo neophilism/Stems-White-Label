@@ -26,6 +26,29 @@ async function main() {
   ]);
 
   try {
+    await db.tenantSubscription.createMany({
+      data: [
+        {
+          tenantId: tenantA.id,
+          status: "ACTIVE",
+          planKey: "domain-test",
+          planName: "Domain Test",
+          maxCustomDomains: null,
+          allowCustomDomains: true,
+          allowWhiteLabel: true,
+        },
+        {
+          tenantId: tenantB.id,
+          status: "ACTIVE",
+          planKey: "domain-test",
+          planName: "Domain Test",
+          maxCustomDomains: null,
+          allowCustomDomains: true,
+          allowWhiteLabel: true,
+        },
+      ],
+    });
+
     const primary = await db.tenantDomain.create({
       data: {
         tenantId: tenantA.id,
