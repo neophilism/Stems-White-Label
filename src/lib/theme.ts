@@ -320,8 +320,8 @@ export async function getResolvedTenantTheme(tenantId: string) {
     },
   });
 
-  const tokens = stored
-    ? normalizeThemeDraft({
+  const tokens: ThemeTokens = stored
+    ? {
         preset: stored.preset,
         displayTypography: stored.displayTypography,
         bodyTypography: stored.bodyTypography,
@@ -345,7 +345,7 @@ export async function getResolvedTenantTheme(tenantId: string) {
         heroHeadline: stored.heroHeadline,
         heroSubheadline: stored.heroSubheadline,
         footerStatement: stored.footerStatement,
-      })
+      }
     : getThemePreset("UNSEALED");
 
   return {
