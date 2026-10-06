@@ -243,8 +243,8 @@ async function main() {
 
     console.log("Platform super-admin database integration validation passed.");
   } finally {
-    await db.tenant.delete({ where: { id: tenant.id } }).catch(() => undefined);
-    await db.user.delete({ where: { id: actor.id } }).catch(() => undefined);
+    // The audit ledger intentionally RESTRICTs deletion of referenced actors and
+    // tenants. CI uses an ephemeral database, so validation rows are left intact.
     await db.$disconnect();
   }
 }
