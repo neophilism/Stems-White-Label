@@ -93,7 +93,6 @@ export async function createPrivateUploadUrl(input: {
     Bucket: config.bucket,
     Key: key,
     ContentType: input.contentType,
-    ContentLength: input.contentLength,
   });
 
   return getSignedUrl(getStorageClient(), command, {
