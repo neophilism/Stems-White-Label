@@ -124,7 +124,7 @@ const workSalesSql =
   'SELECT item."workId" AS "workId", COUNT(item."id")::bigint AS "paidUnits" ' +
   'FROM "OrderItem" item JOIN "Order" orders ON orders."id" = item."orderId" ' +
   'WHERE orders."tenantId" = $1 AND orders."paidAt" >= $2 AND orders."paidAt" < $3 ' +
-  "AND orders.\"status\" IN ('PAID','PARTIALLY_REFUNDED','REFUNDED') " +
+  "AND orders.\"status\" IN ('PAID','PARTIALLY_REFUNDED') " +
   'GROUP BY item."workId"';
 
 const topGroupsSql =
