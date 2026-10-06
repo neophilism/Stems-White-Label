@@ -55,3 +55,17 @@ export async function getCurrentTenant() {
   if (!host) return null;
   return resolveTenantByHostname(host);
 }
+
+
+export const getPrimaryTenantDomain = cache(async (tenantId: string) => {
+  return db.tenantDomain.findFirst({
+    where: {
+      tenantId,
+      isPrimary: true,
+      ownershipStatus: "VERIFIED",
+      routingStatus: "READY",
+      tlsStatus: "READY",
+    },
+    select: { hostname: true },
+  });
+});
