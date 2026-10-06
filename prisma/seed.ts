@@ -43,6 +43,19 @@ async function main() {
     });
   }
 
+  await prisma.tenantSubscription.upsert({
+    where: { tenantId: tenant.id },
+    update: {},
+    create: {
+      tenantId: tenant.id,
+      status: "GRANDFATHERED",
+      planKey: "legacy",
+      planName: "Legacy / Grandfathered",
+      allowCustomDomains: true,
+      allowWhiteLabel: true,
+    },
+  });
+
   await prisma.tenantTheme.upsert({
     where: { tenantId: tenant.id },
     update: {},
