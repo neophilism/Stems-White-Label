@@ -183,6 +183,19 @@ enum DomainTlsStatus {
   FAILED
 }
 
+enum SaasSubscriptionStatus {
+  UNSUBSCRIBED
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  PAUSED
+  GRANDFATHERED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -258,6 +271,7 @@ model Tenant {
   theme           TenantTheme?
   themeAssets     ThemeAsset[]
   commerce        TenantCommerce?
+  subscription    TenantSubscription?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -906,4 +920,44 @@ model TenantCommerce {
   updatedAt                       DateTime @updatedAt
 
   @@index([chargesEnabled, payoutsEnabled])
+}
+
+
+model TenantSubscription {
+  id                      String                 @id @default(cuid())
+  tenantId                String                 @unique
+  status                  SaasSubscriptionStatus @default(UNSUBSCRIBED)
+  stripeCustomerId        String?                @unique
+  stripeSubscriptionId    String?                @unique
+  stripeCheckoutSessionId String?
+  stripePriceId           String?
+  stripeProductId         String?
+  planKey                 String?
+  planName                String?
+  currency                String?
+  unitAmountCents         Int?
+  billingInterval         String?
+  billingIntervalCount    Int?
+  cancelAtPeriodEnd       Boolean                @default(false)
+  trialStart              DateTime?
+  trialEnd                DateTime?
+  currentPeriodStart      DateTime?
+  currentPeriodEnd        DateTime?
+  canceledAt              DateTime?
+  endedAt                 DateTime?
+  pastDueGraceUntil       DateTime?
+  maxWorks                Int?
+  maxStorageBytes         BigInt?
+  maxCustomDomains        Int?
+  maxMembers              Int?
+  allowCustomDomains      Boolean                @default(false)
+  allowWhiteLabel         Boolean                @default(false)
+  entitlements            Json?
+  lastSyncedAt            DateTime?
+  tenant                   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  @@index([status, currentPeriodEnd])
+  @@index([stripePriceId])
 }
