@@ -1,3 +1,4 @@
+import { LicensePurchaseActions } from "@/components/storefront/license-purchase-actions";
 import { formatLicensePrice } from "@/lib/licensing";
 
 type LicenseOptionsProps = {
@@ -84,9 +85,7 @@ export function LicenseOptions({ products }: LicenseOptionsProps) {
                 </div>
               </details>
 
-              <span className="text-link text-link--disabled">
-                Checkout opens in PR 10
-              </span>
+              <LicensePurchaseActions licenseProductId={product.id} />
             </article>
           );
         })}

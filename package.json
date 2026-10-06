@@ -17,7 +17,8 @@
     "test:media-integration": "tsx scripts/validate-media-pipeline.ts",
     "test:queue-integration": "tsx scripts/validate-processing-queue.ts",
     "test:cms-integration": "tsx scripts/validate-catalog-cms.ts",
-    "test:licensing-integration": "tsx scripts/validate-licensing.ts"
+    "test:licensing-integration": "tsx scripts/validate-licensing.ts",
+    "test:checkout-integration": "tsx scripts/validate-checkout-orders.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
@@ -27,7 +28,8 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0"
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "stripe": "^18.5.0"
   },
   "devDependencies": {
     "@types/node": "^24.7.0",

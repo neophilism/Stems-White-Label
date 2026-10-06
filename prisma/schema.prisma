@@ -80,6 +80,28 @@ enum LicenseScope {
   ALL_STEMS
 }
 
+enum OrderStatus {
+  PENDING
+  CHECKOUT_CREATED
+  PAID
+  PAYMENT_FAILED
+  CANCELED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentProvider {
+  STRIPE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -145,6 +167,10 @@ model Tenant {
   processingJobs ProcessingJob[]
   artworkAssets ArtworkAsset[]
   licenseProducts LicenseProduct[]
+  customers       Customer[]
+  orders          Order[]
+  payments        Payment[]
+  purchaseLicenses PurchaseLicense[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -235,6 +261,7 @@ model Work {
   revealSequences RevealSequence[]
   artwork          ArtworkAsset?
   licenseProducts  LicenseProduct[]
+  orderItems        OrderItem[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -434,6 +461,7 @@ model LicenseProduct {
   work            Work             @relation(fields: [workId], references: [id], onDelete: Cascade)
   versions        LicenseVersion[]
   selectedStems   LicenseProductStem[]
+  orderItems      OrderItem[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -458,6 +486,8 @@ model LicenseVersion {
   effectiveAt           DateTime       @default(now())
   retiredAt             DateTime?
   licenseProduct        LicenseProduct @relation(fields: [licenseProductId], references: [id], onDelete: Cascade)
+  orderItems            OrderItem[]
+  purchaseLicenses      PurchaseLicense[]
   createdAt             DateTime       @default(now())
 
   @@unique([licenseProductId, version])
@@ -472,4 +502,153 @@ model LicenseProductStem {
 
   @@id([licenseProductId, stemGroupId])
   @@index([stemGroupId])
+}
+
+
+model Customer {
+  id               String   @id @default(cuid())
+  tenantId         String
+  email            String
+  normalizedEmail  String
+  name             String?
+  stripeCustomerId String?
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orders           Order[]
+  purchaseLicenses PurchaseLicense[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([tenantId, normalizedEmail])
+  @@unique([tenantId, stripeCustomerId])
+  @@index([tenantId, createdAt])
+}
+
+model Order {
+  id                      String      @id @default(cuid())
+  tenantId                String
+  customerId              String?
+  status                  OrderStatus @default(PENDING)
+  currency                String
+  subtotalCents           Int
+  totalCents              Int
+  buyerEmail              String?
+  termsAcceptedAt         DateTime
+  stripeCheckoutSessionId String?     @unique
+  stripePaymentIntentId   String?     @unique
+  paidAt                  DateTime?
+  failedAt                DateTime?
+  canceledAt              DateTime?
+  refundedAt              DateTime?
+  tenant                  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer                Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items                   OrderItem[]
+  payments                Payment[]
+  purchaseLicenses        PurchaseLicense[]
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+
+  @@index([tenantId, status, createdAt])
+  @@index([customerId, createdAt])
+}
+
+model OrderItem {
+  id                         String         @id @default(cuid())
+  orderId                    String
+  licenseProductId           String
+  licenseVersionId           String
+  workId                     String
+  licenseNameSnapshot        String
+  workTitleSnapshot          String
+  licenseVersionNumber       Int
+  scopeSnapshot              LicenseScope
+  unitPriceCents             Int
+  currency                   String
+  termsTextSnapshot          String         @db.Text
+  attributionRequired        Boolean
+  commercialUseAllowed       Boolean
+  derivativesAllowed         Boolean
+  redistributionAllowed      Boolean
+  seatLimit                  Int?
+  projectLimit               Int?
+  selectedStemLabelsSnapshot Json?
+  order                      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  licenseProduct             LicenseProduct @relation(fields: [licenseProductId], references: [id], onDelete: Restrict)
+  licenseVersion             LicenseVersion @relation(fields: [licenseVersionId], references: [id], onDelete: Restrict)
+  work                       Work            @relation(fields: [workId], references: [id], onDelete: Restrict)
+  purchaseLicense            PurchaseLicense?
+  createdAt                  DateTime        @default(now())
+
+  @@index([orderId])
+  @@index([licenseVersionId])
+  @@index([workId])
+}
+
+model Payment {
+  id                String          @id @default(cuid())
+  tenantId          String
+  orderId           String
+  provider          PaymentProvider @default(STRIPE)
+  status            PaymentStatus   @default(PENDING)
+  providerPaymentId String?
+  amountCents       Int
+  currency          String
+  failureCode       String?
+  failureMessage    String?         @db.Text
+  refundedCents     Int             @default(0)
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refunds           Refund[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([provider, providerPaymentId])
+  @@index([tenantId, status, createdAt])
+  @@index([orderId])
+}
+
+model Refund {
+  id               String        @id @default(cuid())
+  paymentId        String
+  providerRefundId String        @unique
+  amountCents      Int
+  status           PaymentStatus
+  reason           String?
+  payment          Payment       @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([paymentId, createdAt])
+}
+
+model PurchaseLicense {
+  id               String         @id @default(cuid())
+  tenantId         String
+  orderId          String
+  orderItemId      String         @unique
+  customerId       String
+  licenseVersionId String
+  acceptedAt       DateTime
+  termsTextSnapshot String        @db.Text
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order            Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem        OrderItem      @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  customer         Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  licenseVersion   LicenseVersion @relation(fields: [licenseVersionId], references: [id], onDelete: Restrict)
+  createdAt        DateTime       @default(now())
+
+  @@index([tenantId, customerId, createdAt])
+  @@index([orderId])
+  @@index([licenseVersionId])
+}
+
+model PaymentWebhookEvent {
+  id              String   @id @default(cuid())
+  provider        PaymentProvider
+  providerEventId String
+  eventType       String
+  processedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@unique([provider, providerEventId])
+  @@index([processedAt])
 }

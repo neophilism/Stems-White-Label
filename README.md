@@ -364,6 +364,63 @@ CI includes a PostgreSQL licensing integration test that creates a selected-stem
 license, persists version 1, creates version 2, and confirms version 1 remains
 unchanged and queryable.
 
+
+## Checkout and orders
+
+PR 10 adds a real Stripe Checkout order lifecycle around immutable
+LicenseVersion records.
+
+Storefront buyers can either Buy now from one license offering or Add to cart
+and review multiple offerings together. The review screen loads current license
+versions from the server, displays their complete terms, and requires explicit
+acceptance before checkout.
+
+Checkout does not trust prices, terms, or version numbers from the browser. The
+server re-resolves active published LicenseProducts and their current
+LicenseVersions, snapshots the legal/commercial record into OrderItem rows, and
+creates the Order before opening Stripe Checkout.
+
+To eliminate a review-to-payment race, the browser also sends the exact
+LicenseVersion IDs it reviewed. If any current version changes before the
+checkout request, the server returns a conflict and requires the buyer to review
+the new version.
+
+The order/payment domain includes:
+
+- Customer
+- Order and OrderItem
+- Payment
+- Refund
+- PurchaseLicense
+- PaymentWebhookEvent
+
+OrderItem stores immutable snapshots of price, currency, terms, rights, limits,
+Work title, license name/version, scope, and selected source-group labels.
+PurchaseLicense is granted only after a verified Stripe webhook confirms
+payment; returning from Stripe is never treated as proof of payment.
+
+Stripe webhook handling covers successful Checkout payments, asynchronous
+payment failure, PaymentIntent failure, expired Checkout sessions, and
+successful refunds. Payment fulfillment is idempotent: replaying a successful
+payment does not create duplicate PurchaseLicense grants.
+
+The checkout success page polls the local order record until the verified webhook
+has changed the order to PAID, then renders receipt/order data. Secure licensed
+downloads and the authenticated customer library are PR 11.
+
+Configuration:
+
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+
+Known buyer email is passed to Stripe as receipt_email; when omitted, Stripe
+Checkout collects customer email itself. Stripe-hosted email receipt delivery
+also depends on the account's Stripe receipt settings.
+
+CI adds a PostgreSQL checkout integration test that validates immutable order
+snapshots, idempotent paid-order fulfillment, Customer normalization, exact
+LicenseVersion grants, partial refunds, and full refunds.
+
 ## Local setup
 
 1. Copy .env.example to .env.
