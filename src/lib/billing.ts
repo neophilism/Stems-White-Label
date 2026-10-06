@@ -158,16 +158,19 @@ export function parseBillingPlan(price: Stripe.Price): BillingPlan {
   };
 }
 
+async function retrieveBillingPlan(priceId: string) {
+  const price = await getStripe().prices.retrieve(priceId, {
+    expand: ["product"],
+  });
+  return parseBillingPlan(price);
+}
+
 export async function getBillingPlan(priceId: string) {
   const allowed = allowedBillingPriceIds();
   if (!allowed.includes(priceId)) {
     throw new Error("That SaaS billing plan is not available.");
   }
-
-  const price = await getStripe().prices.retrieve(priceId, {
-    expand: ["product"],
-  });
-  return parseBillingPlan(price);
+  return retrieveBillingPlan(priceId);
 }
 
 export async function listBillingPlans() {
@@ -354,7 +357,7 @@ export async function syncStripeSubscription(
   const item = subscription.items.data[0];
   if (!item) throw new Error("Stripe subscription has no subscription item.");
 
-  const plan = await getBillingPlan(item.price.id);
+  const plan = await retrieveBillingPlan(item.price.id);
   const customerId =
     typeof subscription.customer === "string"
       ? subscription.customer
