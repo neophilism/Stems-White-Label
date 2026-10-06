@@ -469,7 +469,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               disabled={!editable}
               maxLength={180}
               onChange={(event) => patchState({ title: event.target.value })}
-              value={currentState.title}
+              value={state.title}
             />
           </label>
           <label className="cms-field">
@@ -478,11 +478,11 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               <input
                 disabled={!editable}
                 onChange={(event) => patchState({ slug: event.target.value })}
-                value={currentState.slug}
+                value={state.slug}
               />
               <button
                 disabled={!editable}
-                onClick={() => patchState({ slug: slugify(currentState.title) })}
+                onClick={() => patchState({ slug: slugify(state.title) })}
                 type="button"
               >
                 Generate
@@ -494,7 +494,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             <input
               disabled={!editable}
               onChange={(event) => patchState({ subtitle: event.target.value })}
-              value={currentState.subtitle}
+              value={state.subtitle}
             />
           </label>
           <label className="cms-field cms-field--wide">
@@ -503,7 +503,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               disabled={!editable}
               onChange={(event) => patchState({ description: event.target.value })}
               rows={6}
-              value={currentState.description}
+              value={state.description}
             />
           </label>
           <label className="cms-field">
@@ -511,7 +511,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             <select
               disabled={!editable}
               onChange={(event) => patchState({ primaryArtistId: event.target.value })}
-              value={currentState.primaryArtistId}
+              value={state.primaryArtistId}
             >
               <option value="">No primary artist</option>
               {data.artists.map((artist) => (
@@ -526,7 +526,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             <input
               disabled={!editable}
               onChange={(event) => patchState({ catalogNumber: event.target.value })}
-              value={currentState.catalogNumber}
+              value={state.catalogNumber}
             />
           </label>
           <label className="cms-field">
@@ -535,7 +535,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               disabled={!editable}
               inputMode="decimal"
               onChange={(event) => patchState({ bpm: event.target.value })}
-              value={currentState.bpm}
+              value={state.bpm}
             />
           </label>
           <label className="cms-field">
@@ -543,7 +543,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             <input
               disabled={!editable}
               onChange={(event) => patchState({ musicalKey: event.target.value })}
-              value={currentState.musicalKey}
+              value={state.musicalKey}
             />
           </label>
           <label className="cms-field">
@@ -552,7 +552,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               disabled={!editable}
               inputMode="numeric"
               onChange={(event) => patchState({ durationMs: event.target.value })}
-              value={currentState.durationMs}
+              value={state.durationMs}
             />
           </label>
         </div>
@@ -594,12 +594,12 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             onClick={() =>
               patchState({
                 stems: [
-                  ...currentState.stems,
+                  ...state.stems,
                   {
-                    slug: "source-group-" + (currentState.stems.length + 1),
+                    slug: "source-group-" + (state.stems.length + 1),
                     label: "New Source Group",
                     description: "",
-                    position: currentState.stems.length,
+                    position: state.stems.length,
                     isFeatured: false,
                   },
                 ],
@@ -629,20 +629,20 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
         </div>
 
         <div className="cms-repeater">
-          {currentState.stems.map((stem, index) => (
+          {state.stems.map((stem, index) => (
             <article className="cms-repeater__item" key={stem.id ?? "new-" + index}>
               <div className="cms-repeater__handle">
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <button
                   disabled={!editable || index === 0}
-                  onClick={() => patchState({ stems: move(currentState.stems, index, -1) })}
+                  onClick={() => patchState({ stems: move(state.stems, index, -1) })}
                   type="button"
                 >
                   ↑
                 </button>
                 <button
-                  disabled={!editable || index === currentState.stems.length - 1}
-                  onClick={() => patchState({ stems: move(currentState.stems, index, 1) })}
+                  disabled={!editable || index === state.stems.length - 1}
+                  onClick={() => patchState({ stems: move(state.stems, index, 1) })}
                   type="button"
                 >
                   ↓
@@ -654,7 +654,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                   <input
                     disabled={!editable}
                     onChange={(event) => {
-                      const stems = [...currentState.stems];
+                      const stems = [...state.stems];
                       stems[index] = { ...stem, label: event.target.value };
                       patchState({ stems });
                     }}
@@ -666,7 +666,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                   <input
                     disabled={!editable}
                     onChange={(event) => {
-                      const stems = [...currentState.stems];
+                      const stems = [...state.stems];
                       stems[index] = { ...stem, slug: event.target.value };
                       patchState({ stems });
                     }}
@@ -678,7 +678,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                   <textarea
                     disabled={!editable}
                     onChange={(event) => {
-                      const stems = [...currentState.stems];
+                      const stems = [...state.stems];
                       stems[index] = { ...stem, description: event.target.value };
                       patchState({ stems });
                     }}
@@ -693,7 +693,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                     checked={stem.isFeatured}
                     disabled={!editable}
                     onChange={(event) => {
-                      const stems = [...currentState.stems];
+                      const stems = [...state.stems];
                       stems[index] = { ...stem, isFeatured: event.target.checked };
                       patchState({ stems });
                     }}
@@ -719,7 +719,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                     className="cms-danger-button"
                     disabled={!editable || Boolean(stem.audioAssets?.length)}
                     onClick={() =>
-                      patchState({ stems: currentState.stems.filter((_, itemIndex) => itemIndex !== index) })
+                      patchState({ stems: state.stems.filter((_, itemIndex) => itemIndex !== index) })
                     }
                     type="button"
                   >
@@ -742,13 +742,13 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
         onAdd={() =>
           patchState({
             credits: [
-              ...currentState.credits,
-              { role: "", displayName: "", position: currentState.credits.length },
+              ...state.credits,
+              { role: "", displayName: "", position: state.credits.length },
             ],
           })
         }
       >
-        {currentState.credits.map((credit, index) => (
+        {state.credits.map((credit, index) => (
           <div className="cms-repeater__item cms-repeater__item--compact" key={credit.id ?? index}>
             <div className="cms-grid cms-grid--2">
               <label className="cms-field">
@@ -756,7 +756,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                 <input
                   disabled={!editable}
                   onChange={(event) => {
-                    const credits = [...currentState.credits];
+                    const credits = [...state.credits];
                     credits[index] = { ...credit, role: event.target.value };
                     patchState({ credits });
                   }}
@@ -769,7 +769,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                 <input
                   disabled={!editable}
                   onChange={(event) => {
-                    const credits = [...currentState.credits];
+                    const credits = [...state.credits];
                     credits[index] = { ...credit, displayName: event.target.value };
                     patchState({ credits });
                   }}
@@ -778,9 +778,9 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               </label>
             </div>
             <div className="cms-repeater__actions">
-              <button disabled={index === 0} onClick={() => patchState({ credits: move(currentState.credits, index, -1) })} type="button">↑</button>
-              <button disabled={index === currentState.credits.length - 1} onClick={() => patchState({ credits: move(currentState.credits, index, 1) })} type="button">↓</button>
-              <button className="cms-danger-button" onClick={() => patchState({ credits: currentState.credits.filter((_, i) => i !== index) })} type="button">Remove</button>
+              <button disabled={index === 0} onClick={() => patchState({ credits: move(state.credits, index, -1) })} type="button">↑</button>
+              <button disabled={index === state.credits.length - 1} onClick={() => patchState({ credits: move(state.credits, index, 1) })} type="button">↓</button>
+              <button className="cms-danger-button" onClick={() => patchState({ credits: state.credits.filter((_, i) => i !== index) })} type="button">Remove</button>
             </div>
           </div>
         ))}
@@ -793,13 +793,13 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
         onAdd={() =>
           patchState({
             sections: [
-              ...currentState.sections,
-              { kind: "Work Note", title: "", body: "", position: currentState.sections.length },
+              ...state.sections,
+              { kind: "Work Note", title: "", body: "", position: state.sections.length },
             ],
           })
         }
       >
-        {currentState.sections.map((section, index) => (
+        {state.sections.map((section, index) => (
           <article className="cms-repeater__item" key={section.id ?? index}>
             <div className="cms-grid cms-grid--2">
               <label className="cms-field">
@@ -807,7 +807,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                 <input
                   disabled={!editable}
                   onChange={(event) => {
-                    const sections = [...currentState.sections];
+                    const sections = [...state.sections];
                     sections[index] = { ...section, kind: event.target.value };
                     patchState({ sections });
                   }}
@@ -819,7 +819,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                 <input
                   disabled={!editable}
                   onChange={(event) => {
-                    const sections = [...currentState.sections];
+                    const sections = [...state.sections];
                     sections[index] = { ...section, title: event.target.value };
                     patchState({ sections });
                   }}
@@ -831,7 +831,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                 <textarea
                   disabled={!editable}
                   onChange={(event) => {
-                    const sections = [...currentState.sections];
+                    const sections = [...state.sections];
                     sections[index] = { ...section, body: event.target.value };
                     patchState({ sections });
                   }}
@@ -841,9 +841,9 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
               </label>
             </div>
             <div className="cms-repeater__actions">
-              <button disabled={index === 0} onClick={() => patchState({ sections: move(currentState.sections, index, -1) })} type="button">↑</button>
-              <button disabled={index === currentState.sections.length - 1} onClick={() => patchState({ sections: move(currentState.sections, index, 1) })} type="button">↓</button>
-              <button className="cms-danger-button" onClick={() => patchState({ sections: currentState.sections.filter((_, i) => i !== index) })} type="button">Remove</button>
+              <button disabled={index === 0} onClick={() => patchState({ sections: move(state.sections, index, -1) })} type="button">↑</button>
+              <button disabled={index === state.sections.length - 1} onClick={() => patchState({ sections: move(state.sections, index, 1) })} type="button">↓</button>
+              <button className="cms-danger-button" onClick={() => patchState({ sections: state.sections.filter((_, i) => i !== index) })} type="button">Remove</button>
             </div>
           </article>
         ))}
@@ -859,13 +859,13 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             {data.collections.map((collection) => (
               <label className="cms-check-card" key={collection.id}>
                 <input
-                  checked={currentState.collectionIds.includes(collection.id)}
+                  checked={state.collectionIds.includes(collection.id)}
                   disabled={!editable}
                   onChange={(event) =>
                     patchState({
                       collectionIds: event.target.checked
-                        ? [...currentState.collectionIds, collection.id]
-                        : currentState.collectionIds.filter((id) => id !== collection.id),
+                        ? [...state.collectionIds, collection.id]
+                        : state.collectionIds.filter((id) => id !== collection.id),
                     })
                   }
                   type="checkbox"
@@ -889,7 +889,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
             <h2>Guided reconstruction</h2>
             <p>Every timed transition is creator-authored. There is no default reveal order.</p>
           </div>
-          {currentState.reveal ? (
+          {state.reveal ? (
             <button className="cms-danger-button" onClick={() => patchState({ reveal: null })} type="button">
               Remove sequence
             </button>
@@ -914,22 +914,22 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
           )}
         </div>
 
-        {currentState.reveal ? (
+        {state.reveal ? (
           <>
             <div className="cms-grid cms-grid--2">
               <label className="cms-field">
                 <span>Sequence name</span>
                 <input
                   disabled={!editable}
-                  onChange={(event) => patchState({ reveal: { ...currentState.reveal!, name: event.target.value } })}
-                  value={currentState.reveal.name}
+                  onChange={(event) => patchState({ reveal: { ...state.reveal!, name: event.target.value } })}
+                  value={state.reveal.name}
                 />
               </label>
               <label className="cms-check cms-check--standalone">
                 <input
-                  checked={currentState.reveal.isPublished}
+                  checked={state.reveal.isPublished}
                   disabled={!editable}
-                  onChange={(event) => patchState({ reveal: { ...currentState.reveal!, isPublished: event.target.checked } })}
+                  onChange={(event) => patchState({ reveal: { ...state.reveal!, isPublished: event.target.checked } })}
                   type="checkbox"
                 />
                 Publish guided sequence with the Work
@@ -938,15 +938,15 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                 <span>Description</span>
                 <textarea
                   disabled={!editable}
-                  onChange={(event) => patchState({ reveal: { ...currentState.reveal!, description: event.target.value } })}
+                  onChange={(event) => patchState({ reveal: { ...state.reveal!, description: event.target.value } })}
                   rows={3}
-                  value={currentState.reveal.description ?? ""}
+                  value={state.reveal.description ?? ""}
                 />
               </label>
             </div>
 
             <div className="cms-repeater">
-              {currentState.reveal.steps.map((step, index) => (
+              {state.reveal.steps.map((step, index) => (
                 <article className="cms-repeater__item cms-repeater__item--compact" key={step.id ?? index}>
                   <div className="cms-grid cms-grid--4">
                     <label className="cms-field">
@@ -954,9 +954,9 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                       <input
                         inputMode="numeric"
                         onChange={(event) => {
-                          const steps = [...currentState.reveal!.steps];
+                          const steps = [...state.reveal!.steps];
                           steps[index] = { ...step, atMs: Number(event.target.value) || 0 };
-                          patchState({ reveal: { ...currentState.reveal!, steps } });
+                          patchState({ reveal: { ...state.reveal!, steps } });
                         }}
                         value={step.atMs}
                       />
@@ -966,7 +966,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                       <select
                         onChange={(event) => {
                           const action = event.target.value as RevealStep["action"];
-                          const steps = [...currentState.reveal!.steps];
+                          const steps = [...state.reveal!.steps];
                           steps[index] = {
                             ...step,
                             action,
@@ -975,7 +975,7 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                                 ? step.stemGroupId
                                 : null,
                           };
-                          patchState({ reveal: { ...currentState.reveal!, steps } });
+                          patchState({ reveal: { ...state.reveal!, steps } });
                         }}
                         value={step.action}
                       >
@@ -991,14 +991,14 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                       <select
                         disabled={step.action !== "ADD_SOURCE" && step.action !== "REMOVE_SOURCE"}
                         onChange={(event) => {
-                          const steps = [...currentState.reveal!.steps];
+                          const steps = [...state.reveal!.steps];
                           steps[index] = { ...step, stemGroupId: event.target.value || null };
-                          patchState({ reveal: { ...currentState.reveal!, steps } });
+                          patchState({ reveal: { ...state.reveal!, steps } });
                         }}
                         value={step.stemGroupId ?? ""}
                       >
                         <option value="">Choose group</option>
-                        {currentState.stems.filter((stem) => stem.id).map((stem) => (
+                        {state.stems.filter((stem) => stem.id).map((stem) => (
                           <option key={stem.id} value={stem.id}>{stem.label}</option>
                         ))}
                       </select>
@@ -1007,9 +1007,9 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                       <span>Caption</span>
                       <input
                         onChange={(event) => {
-                          const steps = [...currentState.reveal!.steps];
+                          const steps = [...state.reveal!.steps];
                           steps[index] = { ...step, caption: event.target.value };
-                          patchState({ reveal: { ...currentState.reveal!, steps } });
+                          patchState({ reveal: { ...state.reveal!, steps } });
                         }}
                         value={step.caption ?? ""}
                       />
@@ -1017,16 +1017,16 @@ export function CatalogWorkEditor({ workId }: { workId: string }) {
                   </div>
                   <div className="cms-repeater__actions">
                     <button onClick={() => {
-                      const steps = [...currentState.reveal!.steps];
+                      const steps = [...state.reveal!.steps];
                       steps.splice(index + 1, 0, { atMs: step.atMs + 5000, action: "ADD_SOURCE", stemGroupId: null, caption: "" });
-                      patchState({ reveal: { ...currentState.reveal!, steps } });
+                      patchState({ reveal: { ...state.reveal!, steps } });
                     }} type="button">+ After</button>
-                    <button className="cms-danger-button" onClick={() => patchState({ reveal: { ...currentState.reveal!, steps: currentState.reveal!.steps.filter((_, i) => i !== index) } })} type="button">Remove</button>
+                    <button className="cms-danger-button" onClick={() => patchState({ reveal: { ...state.reveal!, steps: state.reveal!.steps.filter((_, i) => i !== index) } })} type="button">Remove</button>
                   </div>
                 </article>
               ))}
-              {currentState.reveal.steps.length === 0 ? (
-                <button className="cms-secondary-button" onClick={() => patchState({ reveal: { ...currentState.reveal!, steps: [{ atMs: 0, action: "SILENCE", stemGroupId: null, caption: "" }] } })} type="button">
+              {state.reveal.steps.length === 0 ? (
+                <button className="cms-secondary-button" onClick={() => patchState({ reveal: { ...state.reveal!, steps: [{ atMs: 0, action: "SILENCE", stemGroupId: null, caption: "" }] } })} type="button">
                   + Add first step
                 </button>
               ) : null}
