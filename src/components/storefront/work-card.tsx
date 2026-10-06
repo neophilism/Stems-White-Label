@@ -14,6 +14,7 @@ type WorkCardProps = {
     durationMs: number | null;
     primaryArtist: { displayName: string | null; name: string } | null;
     stemGroups: Array<{ id: string; label: string }>;
+    artworkUrl?: string | null;
   };
 };
 
@@ -25,7 +26,11 @@ export function WorkCard({ work }: WorkCardProps) {
         href={"/works/" + work.slug}
         aria-label={"Open " + work.title}
       >
-        <ArtworkPanel title={work.title} catalogNumber={work.catalogNumber} />
+        <ArtworkPanel
+          title={work.title}
+          catalogNumber={work.catalogNumber}
+          artworkUrl={work.artworkUrl}
+        />
       </Link>
       <div className="work-card__body">
         <p className="micro-label">
