@@ -2964,3 +2964,342 @@ select {
     gap: 0.8rem;
   }
 }
+
+
+/* Customer authentication and licensed library */
+
+.customer-signin {
+  display: grid;
+  min-height: 72vh;
+  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.65fr);
+  gap: clamp(3rem, 8vw, 8rem);
+  align-items: center;
+  padding-block: clamp(5rem, 10vw, 10rem);
+}
+
+.customer-signin--single {
+  grid-template-columns: minmax(0, 760px);
+}
+
+.customer-signin__customer h1 {
+  max-width: 850px;
+  margin: 0.8rem 0 1.3rem;
+  font-family: var(--serif);
+  font-size: clamp(3.5rem, 7vw, 7.5rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+}
+
+.customer-signin__customer > p:not(.micro-label),
+.customer-signin__admin p,
+.customer-signin__sent p {
+  max-width: 640px;
+  color: var(--muted);
+  font-family: var(--serif);
+  line-height: 1.7;
+}
+
+.customer-signin__form {
+  display: grid;
+  max-width: 580px;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.customer-signin__form label {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.customer-signin__form label > span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.customer-signin__form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.018);
+  color: var(--ink);
+}
+
+.customer-signin__form .purchase-button {
+  justify-self: start;
+}
+
+.customer-signin__admin {
+  border-left: 1px solid var(--line);
+  padding-left: clamp(2rem, 5vw, 4rem);
+}
+
+.customer-signin__admin h2,
+.customer-signin__sent h2 {
+  margin: 0.7rem 0 0;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 400;
+}
+
+.library-page {
+  min-height: 72vh;
+  padding-block: clamp(4rem, 8vw, 8rem);
+}
+
+.library-page__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3rem;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2.5rem;
+}
+
+.library-page__header h1 {
+  max-width: 900px;
+  margin: 0.8rem 0 1.2rem;
+  font-family: var(--serif);
+  font-size: clamp(3.5rem, 7vw, 7.5rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+}
+
+.library-page__header > div:first-child > p:last-child {
+  max-width: 680px;
+  color: var(--muted);
+  font-family: var(--serif);
+  line-height: 1.7;
+}
+
+.library-page__identity {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: end;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.library-page__identity a {
+  color: var(--metal);
+}
+
+.library-empty {
+  max-width: 760px;
+  padding-block: 5rem;
+}
+
+.library-empty h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 400;
+}
+
+.library-empty p {
+  color: var(--muted);
+}
+
+.library-list {
+  display: grid;
+  gap: 4rem;
+  padding-top: 4rem;
+}
+
+.library-license {
+  border: 1px solid var(--line);
+  padding: clamp(1.5rem, 3vw, 2.4rem);
+  background:
+    linear-gradient(145deg, rgba(185, 161, 111, 0.035), transparent 46%),
+    var(--surface);
+}
+
+.library-license--revoked {
+  opacity: 0.62;
+}
+
+.library-license__heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: flex-start;
+}
+
+.library-license__heading h2 {
+  margin: 0.55rem 0 0;
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.library-license__heading > div:first-child > p:last-child {
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 1.05rem;
+}
+
+.library-license__price {
+  text-align: right;
+}
+
+.library-license__price strong,
+.library-license__price span {
+  display: block;
+}
+
+.library-license__price strong {
+  color: var(--metal);
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  font-weight: 400;
+}
+
+.library-license__price span {
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.library-license__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-top: 1.5rem;
+  padding-block: 0.9rem;
+}
+
+.library-license__meta span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.library-license__meta span:not(:last-child)::after {
+  margin-left: 0.55rem;
+  color: var(--metal-soft);
+  content: "·";
+}
+
+.library-license__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+}
+
+.library-download-button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--metal-soft);
+  padding: 0.65rem 0.9rem;
+  background: rgba(185, 161, 111, 0.08);
+  color: var(--metal);
+  cursor: pointer;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.library-download-button--secondary {
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.library-download-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.library-package-request {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.library-package-status {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.library-files {
+  display: grid;
+  margin-top: 2rem;
+  border-top: 1px solid var(--line);
+}
+
+.library-file {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding-block: 1rem;
+}
+
+.library-file strong,
+.library-file span {
+  display: block;
+}
+
+.library-file strong {
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.library-file span {
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+@media (max-width: 800px) {
+  .customer-signin,
+  .library-page__header {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-signin__admin {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    padding-top: 2rem;
+    padding-left: 0;
+  }
+
+  .library-page__identity {
+    justify-items: start;
+  }
+
+  .library-license__heading {
+    flex-direction: column;
+  }
+
+  .library-license__price {
+    text-align: left;
+  }
+}
+
+@media (max-width: 560px) {
+  .library-file {
+    grid-template-columns: 1fr;
+  }
+
+  .library-file .library-download-button {
+    justify-self: start;
+  }
+}
