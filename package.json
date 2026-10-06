@@ -16,7 +16,8 @@
     "worker:assets": "tsx scripts/asset-worker.ts",
     "test:media-integration": "tsx scripts/validate-media-pipeline.ts",
     "test:queue-integration": "tsx scripts/validate-processing-queue.ts",
-    "test:cms-integration": "tsx scripts/validate-catalog-cms.ts"
+    "test:cms-integration": "tsx scripts/validate-catalog-cms.ts",
+    "test:licensing-integration": "tsx scripts/validate-licensing.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

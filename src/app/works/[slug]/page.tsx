@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ArtworkPanel } from "@/components/storefront/artwork-panel";
+import { LicenseOptions } from "@/components/storefront/license-options";
 import { ListeningRoom } from "@/components/storefront/listening-room";
 import { NarrativeSections } from "@/components/storefront/narrative-sections";
 import { SiteFooter } from "@/components/storefront/site-footer";
@@ -118,6 +119,8 @@ export default async function WorkPage({ params }: WorkPageProps) {
           <NarrativeSections sections={work.sections} />
 
           <SourceCabinet stemGroups={work.stemGroups} />
+
+          <LicenseOptions products={work.licenseProducts} />
 
           <WorkLedger
             audioAssets={work.audioAssets}
