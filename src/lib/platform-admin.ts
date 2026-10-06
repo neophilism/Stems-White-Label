@@ -35,8 +35,11 @@ export function normalizeFeatureNote(value: unknown) {
   return note || null;
 }
 
-function auditJson(value: unknown): Prisma.InputJsonValue | undefined {
+function auditJson(
+  value: unknown,
+): Prisma.InputJsonValue | Prisma.NullTypes.JsonNull | undefined {
   if (value === undefined) return undefined;
+  if (value === null) return Prisma.JsonNull;
   return JSON.parse(
     JSON.stringify(value, (_key, item) =>
       typeof item === "bigint" ? item.toString() : item,
@@ -269,10 +272,22 @@ export async function retryFailedProcessingJob(input: {
         status: "FAILED",
       },
       include: {
-        audioAsset: { select: { id: true, workId: true, status: true } },
+        audioAsset: {
+          select: {
+            id: true,
+            workId: true,
+            status: true,
+            work: { select: { status: true } },
+          },
+        },
       },
     });
     if (!before) throw new Error("Failed processing job not found.");
+    if (before.audioAsset.work.status === "PUBLISHED") {
+      throw new Error(
+        "Published Works must be unpublished through the tenant CMS before retrying failed source processing.",
+      );
+    }
 
     const after = await tx.processingJob.update({
       where: { id: before.id },
