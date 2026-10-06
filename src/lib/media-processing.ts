@@ -1,0 +1,251 @@
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { spawn } from "node:child_process";
+
+export type AudioMetadata = {
+  durationMs: number;
+  sampleRateHz: number | null;
+  bitDepth: number | null;
+  channels: number | null;
+};
+
+type FfprobeDocument = {
+  streams?: Array<{
+    codec_type?: string;
+    sample_rate?: string;
+    bits_per_sample?: number;
+    bits_per_raw_sample?: string;
+    channels?: number;
+    duration?: string;
+  }>;
+  format?: {
+    duration?: string;
+  };
+};
+
+async function runCommand(
+  executable: string,
+  args: string[],
+  options: { maxStdoutBytes?: number } = {},
+) {
+  return new Promise<{ stdout: Buffer; stderr: string }>((resolve, reject) => {
+    const child = spawn(executable, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    const stdout: Buffer[] = [];
+    const stderr: Buffer[] = [];
+    let stdoutBytes = 0;
+    let settled = false;
+    const maxStdoutBytes = options.maxStdoutBytes ?? 64 * 1024 * 1024;
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (settled) return;
+      stdoutBytes += chunk.length;
+
+      if (stdoutBytes > maxStdoutBytes) {
+        settled = true;
+        child.kill("SIGKILL");
+        reject(new Error("Media command exceeded the stdout safety limit."));
+        return;
+      }
+
+      stdout.push(Buffer.from(chunk));
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr.push(Buffer.from(chunk));
+    });
+
+    child.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
+
+    child.once("close", (code) => {
+      if (settled) return;
+      settled = true;
+      const stderrText = Buffer.concat(stderr).toString("utf8").trim();
+
+      if (code !== 0) {
+        reject(
+          new Error(
+            executable +
+              " exited with code " +
+              String(code) +
+              (stderrText ? ": " + stderrText.slice(-3000) : ""),
+          ),
+        );
+        return;
+      }
+
+      resolve({
+        stdout: Buffer.concat(stdout),
+        stderr: stderrText,
+      });
+    });
+  });
+}
+
+export function parseFfprobeMetadata(document: FfprobeDocument): AudioMetadata {
+  const audio = document.streams?.find(
+    (stream) => stream.codec_type === "audio",
+  );
+
+  if (!audio) {
+    throw new Error("Uploaded file does not contain an audio stream.");
+  }
+
+  const durationSeconds = Number(
+    document.format?.duration ?? audio.duration ?? "0",
+  );
+
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    throw new Error("Audio duration could not be determined.");
+  }
+
+  const sampleRate = Number(audio.sample_rate);
+  const rawBitDepth = Number(audio.bits_per_raw_sample);
+  const bitDepth =
+    Number.isFinite(rawBitDepth) && rawBitDepth > 0
+      ? rawBitDepth
+      : audio.bits_per_sample && audio.bits_per_sample > 0
+        ? audio.bits_per_sample
+        : null;
+
+  return {
+    durationMs: Math.round(durationSeconds * 1000),
+    sampleRateHz:
+      Number.isFinite(sampleRate) && sampleRate > 0 ? sampleRate : null,
+    bitDepth,
+    channels:
+      audio.channels && audio.channels > 0 ? audio.channels : null,
+  };
+}
+
+export async function probeAudio(filePath: string) {
+  const executable = process.env.FFPROBE_PATH || "ffprobe";
+  const result = await runCommand(executable, [
+    "-v",
+    "error",
+    "-print_format",
+    "json",
+    "-show_streams",
+    "-show_format",
+    filePath,
+  ]);
+
+  let document: FfprobeDocument;
+
+  try {
+    document = JSON.parse(result.stdout.toString("utf8")) as FfprobeDocument;
+  } catch {
+    throw new Error("ffprobe returned invalid JSON.");
+  }
+
+  return parseFfprobeMetadata(document);
+}
+
+export async function transcodePreview(
+  sourcePath: string,
+  previewPath: string,
+) {
+  const executable = process.env.FFMPEG_PATH || "ffmpeg";
+
+  await runCommand(executable, [
+    "-hide_banner",
+    "-loglevel",
+    "error",
+    "-y",
+    "-i",
+    sourcePath,
+    "-map",
+    "0:a:0",
+    "-vn",
+    "-codec:a",
+    "libmp3lame",
+    "-b:a",
+    "192k",
+    "-ar",
+    "44100",
+    previewPath,
+  ]);
+}
+
+export type WaveformData = {
+  version: 1;
+  sampleRateHz: number;
+  points: number[];
+};
+
+export function pcm16ToWaveform(
+  pcm: Buffer,
+  targetPoints = 1200,
+  sampleRateHz = 2000,
+): WaveformData {
+  const sampleCount = Math.floor(pcm.length / 2);
+
+  if (sampleCount === 0) {
+    return { version: 1, sampleRateHz, points: [] };
+  }
+
+  const pointCount = Math.min(targetPoints, sampleCount);
+  const samplesPerPoint = Math.max(1, Math.ceil(sampleCount / pointCount));
+  const points: number[] = [];
+
+  for (let start = 0; start < sampleCount; start += samplesPerPoint) {
+    const end = Math.min(sampleCount, start + samplesPerPoint);
+    let peak = 0;
+
+    for (let index = start; index < end; index += 1) {
+      const value = Math.abs(pcm.readInt16LE(index * 2));
+      if (value > peak) peak = value;
+    }
+
+    points.push(Number((peak / 32768).toFixed(4)));
+  }
+
+  return { version: 1, sampleRateHz, points };
+}
+
+export async function generateWaveform(filePath: string) {
+  const executable = process.env.FFMPEG_PATH || "ffmpeg";
+  const sampleRateHz = 2000;
+
+  const result = await runCommand(
+    executable,
+    [
+      "-hide_banner",
+      "-loglevel",
+      "error",
+      "-i",
+      filePath,
+      "-map",
+      "0:a:0",
+      "-ac",
+      "1",
+      "-ar",
+      String(sampleRateHz),
+      "-f",
+      "s16le",
+      "pipe:1",
+    ],
+    {
+      maxStdoutBytes: 128 * 1024 * 1024,
+    },
+  );
+
+  return pcm16ToWaveform(result.stdout, 1200, sampleRateHz);
+}
+
+export async function sha256File(filePath: string) {
+  return new Promise<string>((resolve, reject) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(filePath);
+
+    stream.on("error", reject);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("end", () => resolve(hash.digest("hex")));
+  });
+}
