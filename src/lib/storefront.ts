@@ -140,13 +140,13 @@ export async function getPublishedWork(tenantId: string, slug: string) {
           },
           audioAssets: {
             where: { status: "READY" },
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "desc" },
           },
         },
       },
       audioAssets: {
         where: { status: "READY" },
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
       },
       collections: {
         where: {
