@@ -53,6 +53,7 @@ export async function POST(request: Request) {
           tenantId: tenant.id,
         },
         payment_intent_data: {
+          receipt_email: buyerEmail ?? undefined,
           metadata: {
             orderId: order.id,
             tenantId: tenant.id,
