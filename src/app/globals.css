@@ -4097,3 +4097,29 @@ body[data-theme-preset="GALLERY"]::before {
     margin-top: 8px;
   }
 }
+
+
+/* Admin remains operationally neutral regardless of public theme. */
+
+.admin-theme-reset {
+  min-height: 100vh;
+  --background: #070706;
+  --surface: #0e0e0c;
+  --surface-raised: #14130f;
+  --ink: #f2eee4;
+  --ink-soft: #cbc4b6;
+  --muted: #918a7e;
+  --metal: #b9a16f;
+  --metal-soft: #766746;
+  --line: rgba(242, 238, 228, 0.16);
+  --line-strong: rgba(242, 238, 228, 0.32);
+  --serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, "Times New Roman", serif;
+  --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --theme-radius: 0px;
+  background:
+    radial-gradient(circle at 78% 4%, rgba(185, 161, 111, 0.08), transparent 24rem),
+    #070706;
+  color: var(--ink);
+  color-scheme: dark;
+  font-family: var(--sans);
+}
