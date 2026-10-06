@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
+import { assertTenantCanUseWhiteLabel } from "@/lib/billing";
 import { db } from "@/lib/db";
 import {
   availableThemePresets,
@@ -31,6 +32,7 @@ export async function PATCH(request: Request) {
   const body = await request.json().catch(() => null);
 
   try {
+    await assertTenantCanUseWhiteLabel(access.tenant.id);
     const current = await getResolvedTenantTheme(access.tenant.id);
     const applyPreset = body?.action === "apply-preset";
 
