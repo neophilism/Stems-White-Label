@@ -171,7 +171,9 @@ without a playable PREVIEW asset are excluded from the public player manifest.
 A FULL_MIX step is excluded when no full-mix preview exists.
 
 Sequence authoring UI is intentionally deferred to the catalog CMS milestone;
-the domain model and public playback behavior are complete here.
+the domain model and public playback behavior are complete here. The public
+player assumes no default reveal order: every timed source transition comes from
+the creator-authored sequence data.
 
 ## Local setup
 
