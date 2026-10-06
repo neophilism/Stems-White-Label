@@ -1,11 +1,15 @@
 import Link from "next/link";
 
 import { requireTenantPermission } from "@/lib/access";
+import { getPlatformAccess } from "@/lib/platform-access";
 import { hasPermission, type TenantRole } from "@/lib/permissions";
 
 export default async function AdminPage() {
-  const { tenant, membership, session } =
-    await requireTenantPermission("catalog.read");
+  const [{ tenant, membership, session }, platformAccess] =
+    await Promise.all([
+      requireTenantPermission("catalog.read"),
+      getPlatformAccess(),
+    ]);
 
   const canReadFinance = hasPermission(
     membership.role as TenantRole,
@@ -21,6 +25,22 @@ export default async function AdminPage() {
       <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
         Signed in as {session.user?.email ?? session.user?.name}. Role: {membership.role}.
       </p>
+
+      {platformAccess ? (
+        <section className="cms-panel">
+          <p className="eyebrow">Global operations</p>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+            Platform super admin
+          </h2>
+          <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+            Inspect all tenants, subscriptions, storage, jobs, commerce,
+            domains, feature flags, and the immutable operator audit ledger.
+          </p>
+          <Link className="cms-primary-button" href="/platform-admin">
+            Open Platform Console
+          </Link>
+        </section>
+      ) : null}
 
       <section className="cms-panel">
         <p className="eyebrow">Brand & presentation</p>
