@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 
 type Theme = {
   preset: string;
@@ -86,7 +86,7 @@ export function ThemeEditor() {
       "--preview-muted": draft.muted,
       "--preview-accent": draft.accent,
       "--preview-radius": draft.cornerRadiusPx + "px",
-    } as React.CSSProperties;
+    } as CSSProperties;
   }, [draft]);
 
   async function applyPreset(preset: string) {
