@@ -1773,3 +1773,33 @@ select {
   box-shadow: 0 0 8px rgba(242, 238, 228, 0.22);
   pointer-events: none;
 }
+
+
+/* Uploaded Work artwork */
+
+.artwork-panel__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artwork-panel__plate--image {
+  background: linear-gradient(
+    180deg,
+    rgba(7, 7, 6, 0.14),
+    transparent 34%,
+    rgba(7, 7, 6, 0.52)
+  );
+}
+
+.artwork-panel__plate--image .artwork-panel__monogram {
+  visibility: hidden;
+}
+
+.artwork-panel__plate--image .artwork-panel__serial,
+.artwork-panel__plate--image .artwork-panel__title,
+.artwork-panel__plate--image .artwork-panel__edition {
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.72);
+}
