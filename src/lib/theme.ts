@@ -396,6 +396,6 @@ export function themeCssVariables(theme: Awaited<ReturnType<typeof getResolvedTe
 
 export function availableThemePresets() {
   return (Object.keys(PRESETS) as Array<Exclude<ThemePreset, "CUSTOM">>).map(
-    (preset) => ({ preset, ...getThemePreset(preset) }),
+    (preset) => getThemePreset(preset),
   );
 }
