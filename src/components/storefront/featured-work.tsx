@@ -16,6 +16,7 @@ type FeaturedWorkProps = {
         durationMs: number | null;
         primaryArtist: { displayName: string | null; name: string } | null;
         stemGroups: Array<{ id: string; label: string }>;
+        artworkUrl?: string | null;
       }
     | null;
 };
@@ -77,6 +78,7 @@ export function FeaturedWork({ work }: FeaturedWorkProps) {
         <ArtworkPanel
           title={work.title}
           catalogNumber={work.catalogNumber}
+          artworkUrl={work.artworkUrl}
           size="hero"
         />
       </Link>
