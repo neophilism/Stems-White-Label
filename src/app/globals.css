@@ -2692,3 +2692,275 @@ select {
     justify-content: flex-start;
   }
 }
+
+
+/* Checkout and orders */
+
+.license-option__purchase-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.purchase-button {
+  min-height: 44px;
+  border: 1px solid var(--metal-soft);
+  background: rgba(185, 161, 111, 0.1);
+  color: var(--metal);
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.purchase-button--secondary {
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.purchase-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.cart-page,
+.checkout-success-page {
+  min-height: 72vh;
+  padding-block: clamp(4rem, 8vw, 8rem);
+}
+
+.cart-empty h1,
+.cart-review__header h1,
+.receipt h1 {
+  max-width: 900px;
+  margin: 0.8rem 0 1.2rem;
+  font-family: var(--serif);
+  font-size: clamp(3rem, 7vw, 7rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+  line-height: 0.92;
+}
+
+.cart-review__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3rem;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2.5rem;
+}
+
+.cart-review__header > div > p:last-child,
+.receipt > p:not(.micro-label) {
+  max-width: 680px;
+  color: var(--muted);
+  font-family: var(--serif);
+  line-height: 1.7;
+}
+
+.cart-review__header > strong {
+  color: var(--metal);
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 3vw, 3rem);
+  font-weight: 400;
+}
+
+.cart-review__items,
+.receipt__items {
+  border-top: 1px solid var(--line);
+  margin-top: 3rem;
+}
+
+.cart-review__item {
+  position: relative;
+  border-bottom: 1px solid var(--line);
+  padding-block: 2rem;
+}
+
+.cart-review__item-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+}
+
+.cart-review__item-head h2 {
+  margin: 0.5rem 0 0;
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 3vw, 3rem);
+  font-weight: 400;
+}
+
+.cart-review__item-head p:last-child {
+  color: var(--ink-soft);
+}
+
+.cart-review__item-head > strong {
+  color: var(--metal);
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.cart-review__scope {
+  color: var(--metal);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cart-review__terms {
+  max-width: 860px;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  line-height: 1.65;
+}
+
+.cart-review__terms summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 0.64rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.cart-review__remove {
+  margin-top: 1rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.62rem;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.cart-review__acceptance {
+  display: grid;
+  max-width: 760px;
+  gap: 1.2rem;
+  margin-top: 3rem;
+}
+
+.cart-review__acceptance > label:first-child {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.cart-review__acceptance input[type="checkbox"] {
+  margin-top: 0.2rem;
+  accent-color: var(--metal);
+}
+
+.cart-review__email {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.cart-review__email span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cart-review__email input {
+  border: 1px solid var(--line);
+  padding: 0.8rem 0.9rem;
+  background: rgba(255, 255, 255, 0.018);
+  color: var(--ink);
+}
+
+.cart-review__checkout {
+  justify-self: start;
+}
+
+.cart-review__error {
+  color: #c58b7d;
+}
+
+.cart-review__loading {
+  color: var(--muted);
+  padding-block: 3rem;
+}
+
+.receipt {
+  max-width: 980px;
+}
+
+.receipt__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-top: 2.5rem;
+  padding-block: 1rem;
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.receipt__items {
+  margin-bottom: 2.5rem;
+}
+
+.receipt__items article {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  border-bottom: 1px solid var(--line);
+  padding-block: 1.25rem;
+}
+
+.receipt__items article strong,
+.receipt__items article span {
+  display: block;
+}
+
+.receipt__items article > div > strong {
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.receipt__items article span {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.receipt__items article > strong {
+  color: var(--metal);
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+@media (max-width: 700px) {
+  .license-option__purchase-actions,
+  .cart-review__header {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-review__header {
+    gap: 1rem;
+  }
+
+  .cart-review__item-head,
+  .receipt__items article {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+}
