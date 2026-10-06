@@ -49,6 +49,14 @@ enum AudioAssetStatus {
   ARCHIVED
 }
 
+enum RevealStepAction {
+  ADD_SOURCE
+  REMOVE_SOURCE
+  ALL_SOURCES
+  FULL_MIX
+  SILENCE
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -111,6 +119,7 @@ model Tenant {
   collections  Collection[]
   works        Work[]
   audioAssets  AudioAsset[]
+  revealSteps  RevealStep[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -198,6 +207,7 @@ model Work {
   stemGroups      StemGroup[]
   audioAssets     AudioAsset[]
   sections        WorkSection[]
+  revealSequences RevealSequence[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
@@ -269,6 +279,37 @@ model StemGroup {
   @@unique([workId, slug])
   @@index([workId, position])
   @@index([parentId])
+}
+
+model RevealSequence {
+  id          String       @id @default(cuid())
+  workId      String
+  name        String
+  description String?      @db.Text
+  isPublished Boolean      @default(false)
+  position    Int          @default(0)
+  work        Work         @relation(fields: [workId], references: [id], onDelete: Cascade)
+  steps       RevealStep[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([workId, isPublished, position])
+}
+
+model RevealStep {
+  id          String           @id @default(cuid())
+  sequenceId  String
+  stemGroupId String?
+  atMs        Int
+  action      RevealStepAction
+  caption     String?
+  sequence    RevealSequence   @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  stemGroup   StemGroup?       @relation(fields: [stemGroupId], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([sequenceId, atMs])
+  @@index([stemGroupId])
 }
 
 model AudioAsset {
