@@ -13,27 +13,27 @@ export function safeProcessingError(error: unknown) {
 
 export async function claimNextProcessingJob(workerId: string) {
   const sql = [
-    'WITH next_job AS (',
-    '  SELECT "id"',
-    '  FROM "ProcessingJob"',
-    '  WHERE "status" = \\'QUEUED\\'::"ProcessingJobStatus"',
-    '    AND "runAfter" <= NOW()',
-    '    AND "attempts" < "maxAttempts"',
-    '  ORDER BY "runAfter" ASC, "createdAt" ASC',
-    '  FOR UPDATE SKIP LOCKED',
-    '  LIMIT 1',
-    ')',
-    'UPDATE "ProcessingJob" AS job',
-    'SET "status" = \\'RUNNING\\'::"ProcessingJobStatus",',
-    '    "attempts" = job."attempts" + 1,',
-    '    "lockedAt" = NOW(),',
-    '    "lockedBy" = $1,',
-    '    "startedAt" = COALESCE(job."startedAt", NOW()),',
-    '    "updatedAt" = NOW()',
-    'FROM next_job',
-    'WHERE job."id" = next_job."id"',
-    'RETURNING job."id"',
-  ].join("\\n");
+    "WITH next_job AS (",
+    "  SELECT \"id\"",
+    "  FROM \"ProcessingJob\"",
+    "  WHERE \"status\" = 'QUEUED'::\"ProcessingJobStatus\"",
+    "    AND \"runAfter\" <= NOW()",
+    "    AND \"attempts\" < \"maxAttempts\"",
+    "  ORDER BY \"runAfter\" ASC, \"createdAt\" ASC",
+    "  FOR UPDATE SKIP LOCKED",
+    "  LIMIT 1",
+    ")",
+    "UPDATE \"ProcessingJob\" AS job",
+    "SET \"status\" = 'RUNNING'::\"ProcessingJobStatus\",",
+    "    \"attempts\" = job.\"attempts\" + 1,",
+    "    \"lockedAt\" = NOW(),",
+    "    \"lockedBy\" = $1,",
+    "    \"startedAt\" = COALESCE(job.\"startedAt\", NOW()),",
+    "    \"updatedAt\" = NOW()",
+    "FROM next_job",
+    "WHERE job.\"id\" = next_job.\"id\"",
+    "RETURNING job.\"id\"",
+  ].join("\n");
 
   const rows = await db.$queryRawUnsafe<Array<{ id: string }>>(sql, workerId);
   const id = rows[0]?.id;
@@ -59,6 +59,11 @@ export async function recoverStaleProcessingJobs(staleMinutes: number) {
       audioAssetId: true,
       attempts: true,
       maxAttempts: true,
+      audioAsset: {
+        select: {
+          workId: true,
+        },
+      },
     },
   });
 
@@ -81,6 +86,13 @@ export async function recoverStaleProcessingJobs(staleMinutes: number) {
         db.audioAsset.update({
           where: { id: job.audioAssetId },
           data: { status: "FAILED" },
+        }),
+        db.work.updateMany({
+          where: {
+            id: job.audioAsset.workId,
+            status: "PROCESSING",
+          },
+          data: { status: "DRAFT" },
         }),
       ]);
       failed += 1;
