@@ -195,6 +195,13 @@ export async function getPublishedCollections(tenantId: string) {
     where: { tenantId, status: "PUBLISHED" },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     include: {
+      _count: {
+        select: {
+          works: {
+            where: { work: { status: "PUBLISHED" } },
+          },
+        },
+      },
       works: {
         where: { work: { status: "PUBLISHED" } },
         orderBy: { position: "asc" },
@@ -212,7 +219,7 @@ export async function getPublishedCollections(tenantId: string) {
 
   return collections.map((collection) => ({
     ...collection,
-    publishedWorkCount: collection.works.length,
+    publishedWorkCount: collection._count.works,
     previewWorks: collection.works.map((entry) => ({
       id: entry.work.id,
       slug: entry.work.slug,
