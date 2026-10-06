@@ -19,6 +19,11 @@ export default async function WorkEditorPage({ params }: PageProps) {
   return (
     <main className="cms-shell">
       <Link className="text-link cms-back-link" href="/admin/catalog">← Catalog</Link>
+      <div className="cms-header-actions" style={{ marginBottom: "1.5rem" }}>
+        <Link className="cms-secondary-button" href={"/admin/catalog/works/" + workId + "/licensing"}>
+          Manage licensing
+        </Link>
+      </div>
       <CatalogWorkEditor workId={workId} />
     </main>
   );
