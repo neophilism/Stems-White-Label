@@ -6,6 +6,7 @@ import {
   clampPlaybackOffset,
   formatPlaybackTime,
   stemIsAudible,
+  waveformPolygon,
   type PlaybackMode,
 } from "@/lib/player-state";
 import type { PlayerManifest } from "@/lib/player-manifest";
@@ -58,6 +59,7 @@ export function StemPlayer({
     useState<PlayerManifest["revealSequence"]>(null);
   const [isRevealActive, setIsRevealActive] = useState(false);
   const [revealCaption, setRevealCaption] = useState<string | null>(null);
+  const [waveformPoints, setWaveformPoints] = useState<number[]>([]);
 
   const contextRef = useRef<AudioContext | null>(null);
   const manifestRef = useRef<PlayerManifest | null>(null);
@@ -78,6 +80,7 @@ export function StemPlayer({
   ).length;
   const playableTrackCount = previewGroupCount + (hasFullMix ? 1 : 0);
   const canPlay = playableTrackCount > 0;
+  const waveformShape = waveformPolygon(waveformPoints);
 
   function stopSources() {
     for (const source of sourcesRef.current.values()) {
@@ -269,10 +272,40 @@ export function StemPlayer({
       manifestRef.current = manifest;
       setRevealSequence(manifest.revealSequence);
 
+      const waveformUrl =
+        manifest.fullMix?.waveformUrl ??
+        manifest.stems.find((track) => Boolean(track.waveformUrl))?.waveformUrl ??
+        null;
+
+      const waveformLoad = waveformUrl
+        ? fetch(waveformUrl, { cache: "no-store" })
+            .then(async (response) => {
+              if (!response.ok) return;
+              const payload = (await response.json()) as {
+                points?: unknown;
+              };
+
+              if (
+                Array.isArray(payload.points) &&
+                payload.points.length <= 5000 &&
+                payload.points.every(
+                  (point) =>
+                    typeof point === "number" &&
+                    Number.isFinite(point) &&
+                    point >= 0 &&
+                    point <= 1,
+                )
+              ) {
+                setWaveformPoints(payload.points);
+              }
+            })
+            .catch(() => undefined)
+        : Promise.resolve();
+
       let completed = 0;
 
-      await Promise.all(
-        tracks.map(async ({ key, track }) => {
+      await Promise.all([
+        ...tracks.map(async ({ key, track }) => {
           const response = await fetch(track.url, {
             cache: "no-store",
           });
@@ -294,7 +327,8 @@ export function StemPlayer({
           completed += 1;
           setLoadedTracks(completed);
         }),
-      );
+        waveformLoad,
+      ]);
 
       const bufferDuration = Math.max(
         ...Array.from(buffersRef.current.values()).map(
@@ -327,6 +361,7 @@ export function StemPlayer({
       masterGainRef.current = null;
       manifestRef.current = null;
       setRevealSequence(null);
+      setWaveformPoints([]);
       exitReveal();
 
       if (context && context.state !== "closed") {
@@ -592,6 +627,23 @@ export function StemPlayer({
           </button>
         </div>
       </div>
+
+      {waveformShape ? (
+        <div className="stem-player__waveform" aria-hidden="true">
+          <svg viewBox="0 0 1000 100" preserveAspectRatio="none">
+            <polygon points={waveformShape} />
+          </svg>
+          <span
+            className="stem-player__waveform-playhead"
+            style={{
+              left:
+                (durationSeconds > 0
+                  ? Math.min(100, (positionSeconds / durationSeconds) * 100)
+                  : 0) + "%",
+            }}
+          />
+        </div>
+      ) : null}
 
       <div className="stem-player__timeline">
         <span>{formatPlaybackTime(positionSeconds)}</span>
