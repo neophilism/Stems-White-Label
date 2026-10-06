@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { verifyArtworkAccess } from "@/lib/artwork";
 import { db } from "@/lib/db";
 import { getPrivateObject } from "@/lib/object-storage";
+import { getTenantApiAccess } from "@/lib/access";
 import { getCurrentTenant } from "@/lib/tenant";
 
 export const runtime = "nodejs";
@@ -28,13 +29,23 @@ export async function GET(request: Request, { params }: RouteProps) {
       tenantId: tenant.id,
       status: "READY",
       storageKey: { not: null },
-      work: { status: "PUBLISHED" },
     },
-    select: { storageKey: true, mimeType: true },
+    select: {
+      storageKey: true,
+      mimeType: true,
+      work: { select: { status: true } },
+    },
   });
 
   if (!asset?.storageKey) {
     return NextResponse.json({ error: "Artwork not found." }, { status: 404 });
+  }
+
+  if (asset.work.status !== "PUBLISHED") {
+    const access = await getTenantApiAccess("catalog.read");
+    if (!access || access.tenant.id !== tenant.id) {
+      return NextResponse.json({ error: "Artwork not found." }, { status: 404 });
+    }
   }
 
   try {
