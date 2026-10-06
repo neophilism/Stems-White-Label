@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { quoteLicenseProducts } from "@/lib/checkout";
+import { commerceReadiness } from "@/lib/commerce";
+import { db } from "@/lib/db";
 import { getCurrentTenant } from "@/lib/tenant";
 
 export async function POST(request: Request) {
@@ -9,8 +11,14 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   try {
-    const quote = await quoteLicenseProducts(tenant.id, body?.licenseProductIds);
+    const [quote, commerce] = await Promise.all([
+      quoteLicenseProducts(tenant.id, body?.licenseProductIds),
+      db.tenantCommerce.findUnique({ where: { tenantId: tenant.id } }),
+    ]);
+    const checkoutReady = commerce ? commerceReadiness(commerce).ready : false;
+
     return NextResponse.json({
+      checkoutReady,
       currency: quote.currency,
       subtotalCents: quote.subtotalCents,
       items: quote.items.map((item) => ({
