@@ -31,15 +31,7 @@ async function main() {
 
   await prisma.tenantTheme.upsert({
     where: { tenantId: tenant.id },
-    update: {
-      preset: "UNSEALED",
-      logoText: "UR",
-      heroEyebrow: "Unsealed source archive",
-      heroHeadline: "The record is not a file.",
-      heroSubheadline: "It is a construction.",
-      footerStatement:
-        "Masters, sections, and source material presented as works in their own right.",
-    },
+    update: {},
     create: {
       tenantId: tenant.id,
       preset: "UNSEALED",
