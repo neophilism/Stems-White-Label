@@ -25,7 +25,11 @@ export async function getStorefrontHome(tenantId: string) {
       take: 6,
       include: {
         _count: {
-          select: { works: true },
+          select: {
+            works: {
+              where: { work: { status: "PUBLISHED" } },
+            },
+          },
         },
       },
     }),
