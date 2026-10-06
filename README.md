@@ -572,6 +572,101 @@ CI adds a PostgreSQL catalog-navigation integration test proving:
 - Collection filtering works
 - unpublished source metadata cannot appear in public search
 
+
+## White-label theme engine
+
+PR 13 makes public presentation tenant-configurable while keeping the catalog,
+audio, licensing, checkout, and delivery systems shared.
+
+TenantTheme is a one-to-one tenant configuration with controlled tokens for:
+
+- display and body typography families
+- background, surface, text, muted, accent, and soft-accent colors
+- hero composition
+- navigation treatment
+- footer treatment
+- layout density
+- artwork aspect ratio
+- corner radius
+- restrained-motion preference
+- logo fallback text
+- hero editorial copy
+- footer statement
+
+Seven named presets ship through the same token system:
+
+- Unsealed
+- Atelier
+- Archive
+- Minimal
+- Brutalist
+- Gallery
+- Cinematic
+
+Manual edits preserve the resolved values as a CUSTOM theme. Theme inputs do not
+accept arbitrary CSS: colors are six-digit hex values, typography/layout choices
+come from controlled enums, artwork aspect ratios are allow-listed, and corner
+radius is bounded.
+
+The Unsealed Records seed tenant uses the Unsealed preset as the flagship
+reference implementation. Re-running the seed does not overwrite an existing
+customized theme.
+
+### Brand assets
+
+Logo and favicon files use ThemeAsset and the existing private S3-compatible
+object store.
+
+- logos: PNG, JPEG, or WebP, maximum 5 MB
+- favicons: PNG, ICO, or WebP, maximum 1 MB
+- SVG is intentionally rejected to avoid active-content exposure
+- uploads go directly from the browser to private object storage
+- completion verifies object size and MIME type
+- only the active tenant-linked logo/favicon is publicly retrievable
+- public delivery uses tenant-scoped application routes with nosniff headers
+
+### Runtime application
+
+The root layout resolves the tenant theme and emits CSS custom properties plus
+composition data attributes. The same theme drives:
+
+- page background and surface system
+- typography
+- border strength
+- accent system
+- color scheme for light/dark browser controls
+- header logo and navigation style
+- homepage hero copy and layout
+- artwork proportions
+- spacing density
+- radius treatment
+- motion enable/disable
+- footer style and statement
+- tenant favicon metadata
+
+Theme resolution is request-cached so the layout, header, footer, and page can
+share one database read. The administrator UI is intentionally reset to a stable
+neutral operational theme so an extreme public preset cannot make the CMS hard to
+use.
+
+### Theme administration
+
+/admin/theme provides:
+
+- preset selection
+- typography and composition selectors
+- palette controls
+- artwork/density/radius controls
+- motion control
+- brand-language editing
+- logo/favicon uploads
+- live token preview
+- custom-theme persistence
+
+CI adds unit tests for preset resolution and injection-safe validation, logo and
+favicon validation, plus a PostgreSQL integration test proving tenant isolation,
+CUSTOM persistence, CSS-variable resolution, and active brand-asset linkage.
+
 ## Local setup
 
 1. Copy .env.example to .env.

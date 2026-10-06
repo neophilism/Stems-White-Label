@@ -164,7 +164,7 @@ export default async function WorkPage({ params }: WorkPageProps) {
           ) : null}
 
           <section className="work-page__closing">
-            <p className="micro-label">Unsealed source archive</p>
+            <p className="micro-label">{tenant.name} source archive</p>
             <h2>The finished record is one view of the material.</h2>
             <p>
               This archive preserves another: the musical architecture from

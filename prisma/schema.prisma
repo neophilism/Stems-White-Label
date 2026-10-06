@@ -109,6 +109,62 @@ enum DownloadPackageStatus {
   FAILED
 }
 
+enum ThemePreset {
+  UNSEALED
+  ATELIER
+  ARCHIVE
+  MINIMAL
+  BRUTALIST
+  GALLERY
+  CINEMATIC
+  CUSTOM
+}
+
+enum ThemeTypography {
+  EDITORIAL
+  CLASSIC
+  MODERN
+  HUMANIST
+  MONO
+}
+
+enum ThemeHeroStyle {
+  DISPLAY_CASE
+  TYPOGRAPHIC
+  SPLIT
+  IMMERSIVE
+  MINIMAL
+}
+
+enum ThemeNavStyle {
+  BORDERED
+  FLOATING
+  MINIMAL
+}
+
+enum ThemeFooterStyle {
+  EDITORIAL
+  COMPACT
+  MINIMAL
+}
+
+enum ThemeDensity {
+  AIRY
+  BALANCED
+  COMPACT
+}
+
+enum ThemeAssetKind {
+  LOGO
+  FAVICON
+}
+
+enum ThemeAssetStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 model User {
   id            String             @id @default(cuid())
   name          String?
@@ -181,6 +237,8 @@ model Tenant {
   purchaseLicenses PurchaseLicense[]
   downloadEntitlements DownloadEntitlement[]
   downloadPackages DownloadPackage[]
+  theme           TenantTheme?
+  themeAssets     ThemeAsset[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -733,4 +791,58 @@ model OrderItemAsset {
 
   @@id([orderItemId, audioAssetId])
   @@index([audioAssetId])
+}
+
+
+model TenantTheme {
+  id                String                 @id @default(cuid())
+  tenantId          String                 @unique
+  preset            ThemePreset            @default(UNSEALED)
+  displayTypography ThemeTypography        @default(EDITORIAL)
+  bodyTypography    ThemeTypography        @default(MODERN)
+  heroStyle         ThemeHeroStyle         @default(DISPLAY_CASE)
+  navStyle          ThemeNavStyle          @default(BORDERED)
+  footerStyle       ThemeFooterStyle       @default(EDITORIAL)
+  density           ThemeDensity           @default(AIRY)
+  background        String                 @default("#070706")
+  surface           String                 @default("#0e0e0c")
+  surfaceRaised     String                 @default("#14130f")
+  ink               String                 @default("#f2eee4")
+  inkSoft           String                 @default("#cbc4b6")
+  muted             String                 @default("#918a7e")
+  accent            String                 @default("#b9a16f")
+  accentSoft        String                 @default("#766746")
+  cornerRadiusPx    Int                    @default(0)
+  artworkAspect     String                 @default("1 / 1")
+  motionEnabled     Boolean                @default(true)
+  logoText          String?
+  heroEyebrow       String?
+  heroHeadline      String?
+  heroSubheadline   String?
+  footerStatement   String?                @db.Text
+  logoAssetId       String?                @unique
+  faviconAssetId    String?                @unique
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  logoAsset         ThemeAsset?             @relation("TenantThemeLogo", fields: [logoAssetId], references: [id], onDelete: SetNull)
+  faviconAsset      ThemeAsset?             @relation("TenantThemeFavicon", fields: [faviconAssetId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+}
+
+model ThemeAsset {
+  id          String           @id @default(cuid())
+  tenantId    String
+  kind        ThemeAssetKind
+  status      ThemeAssetStatus @default(PENDING)
+  fileName    String
+  storageKey  String?          @unique
+  mimeType    String
+  sizeBytes   BigInt
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  logoFor     TenantTheme?     @relation("TenantThemeLogo")
+  faviconFor  TenantTheme?     @relation("TenantThemeFavicon")
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([tenantId, kind, status])
 }

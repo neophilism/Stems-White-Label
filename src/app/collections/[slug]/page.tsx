@@ -38,7 +38,7 @@ export default async function CollectionPage({ params }: CollectionPageProps) {
           {collection.description ? <p>{collection.description}</p> : null}
           <div className="collection-page__rule">
             <span>{collection.works.length} works</span>
-            <span>Unsealed source archive</span>
+            <span>{tenant.name} source archive</span>
           </div>
         </header>
 

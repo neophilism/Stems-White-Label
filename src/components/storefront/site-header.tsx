@@ -1,17 +1,29 @@
 import Link from "next/link";
 
+import { getResolvedTenantTheme } from "@/lib/theme";
+import { getCurrentTenant } from "@/lib/tenant";
+
 type SiteHeaderProps = {
   tenantName: string;
 };
 
-export function SiteHeader({ tenantName }: SiteHeaderProps) {
+export async function SiteHeader({ tenantName }: SiteHeaderProps) {
+  const tenant = await getCurrentTenant();
+  const theme = tenant ? await getResolvedTenantTheme(tenant.id) : null;
+
   return (
-    <header className="site-header">
+    <header className={"site-header site-header--" + (theme?.navStyle ?? "BORDERED").toLowerCase()}>
       <div className="storefront-shell site-header__inner">
         <Link className="wordmark" href="/" aria-label={tenantName + " home"}>
-          <span className="wordmark__seal" aria-hidden="true">
-            UR
-          </span>
+          {theme?.logoAssetId ? (
+            <span className="wordmark__logo-wrap">
+              <img className="wordmark__logo" src="/api/theme/logo" alt="" />
+            </span>
+          ) : (
+            <span className="wordmark__seal" aria-hidden="true">
+              {theme?.logoText ?? "UR"}
+            </span>
+          )}
           <span className="wordmark__name">{tenantName}</span>
         </Link>
 
