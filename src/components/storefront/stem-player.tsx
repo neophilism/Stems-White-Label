@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 
 import {
   clampPlaybackOffset,
@@ -393,7 +393,7 @@ export function StemPlayer({
   }
 
   function toggleSet(
-    setter: React.Dispatch<React.SetStateAction<Set<string>>>,
+    setter: Dispatch<SetStateAction<Set<string>>>,
     stemGroupId: string,
   ) {
     setter((current) => {
