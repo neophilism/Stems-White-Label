@@ -48,6 +48,7 @@ jobs:
       - run: npm run test:analytics-integration
       - run: npm run test:platform-admin-integration
       - run: npm run test:team-integration
+      - run: npm run test:demo-integration
       - run: npm run test:licensing-integration
       - run: npm run test:checkout-integration
       - run: npm run test:delivery-integration
