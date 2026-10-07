@@ -89,19 +89,13 @@ export const DEMO_FEATURES = [
   },
 ] as const;
 
-type DemoModeEnv = {
-  DEMO_MODE?: string;
-};
+type DemoEnv = Record<string, string | undefined>;
 
-type DemoTenantEnv = {
-  DEMO_TENANT_SLUG?: string;
-};
-
-export function demoModeEnabled(env: DemoModeEnv = process.env) {
+export function demoModeEnabled(env: DemoEnv = process.env) {
   return env.DEMO_MODE === "true";
 }
 
-export function demoTenantSlug(env: DemoTenantEnv = process.env) {
+export function demoTenantSlug(env: DemoEnv = process.env) {
   return env.DEMO_TENANT_SLUG?.trim() || "stems-demo";
 }
 
