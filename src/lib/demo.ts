@@ -46,6 +46,7 @@ export const DEMO_PRICING = [
     cadence: "/ month",
     description: "For independent artists presenting a focused source catalog.",
     features: ["10 Works", "25 GB tracked storage", "1 custom domain", "3 team members"],
+    featured: false,
   },
   {
     name: "Label",
@@ -61,6 +62,7 @@ export const DEMO_PRICING = [
     cadence: "",
     description: "For larger catalogs, archives, and multi-brand deployments.",
     features: ["Custom limits", "Priority onboarding", "Custom rollout support", "Platform-scale operations"],
+    featured: false,
   },
 ] as const;
 
@@ -87,11 +89,19 @@ export const DEMO_FEATURES = [
   },
 ] as const;
 
-export function demoModeEnabled(env = process.env) {
+type DemoModeEnv = {
+  DEMO_MODE?: string;
+};
+
+type DemoTenantEnv = {
+  DEMO_TENANT_SLUG?: string;
+};
+
+export function demoModeEnabled(env: DemoModeEnv = process.env) {
   return env.DEMO_MODE === "true";
 }
 
-export function demoTenantSlug(env = process.env) {
+export function demoTenantSlug(env: DemoTenantEnv = process.env) {
   return env.DEMO_TENANT_SLUG?.trim() || "stems-demo";
 }
 
