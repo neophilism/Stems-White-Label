@@ -5069,3 +5069,290 @@ body[data-theme-preset="GALLERY"]::before {
     min-height: 130px;
   }
 }
+
+
+/* Platform super admin */
+
+.platform-admin-shell {
+  max-width: 1480px;
+}
+
+.platform-admin-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+  align-items: flex-end;
+  margin-bottom: 1.2rem;
+}
+
+.platform-admin-header h1 {
+  margin: 0.35rem 0 0.7rem;
+  font-family: var(--serif);
+  font-size: clamp(3.2rem, 8vw, 7rem);
+  font-weight: 400;
+  letter-spacing: -0.055em;
+}
+
+.platform-admin-header p:last-child {
+  max-width: 780px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.platform-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: var(--line);
+  margin-bottom: 1.2rem;
+}
+
+.platform-kpis article {
+  display: grid;
+  min-height: 150px;
+  align-content: space-between;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.platform-kpis span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.platform-kpis strong {
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3.7rem);
+  font-weight: 400;
+  letter-spacing: -0.045em;
+}
+
+.platform-kpis small {
+  color: var(--ink-soft);
+  font-size: 0.62rem;
+}
+
+.platform-overview-grid,
+.platform-controls__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem;
+}
+
+.platform-overview-grid > .cms-panel,
+.platform-controls__grid > .cms-panel {
+  margin: 0;
+}
+
+.platform-metric-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem 1rem;
+  margin: 0;
+}
+
+.platform-metric-list dt {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.platform-metric-list dd {
+  margin: 0;
+  color: var(--ink-soft);
+  text-align: right;
+  font-size: 0.68rem;
+  overflow-wrap: anywhere;
+}
+
+.platform-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.platform-payment-grid article {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  padding: 1rem;
+}
+
+.platform-payment-grid article > strong {
+  display: block;
+  margin: 0.45rem 0 0.9rem;
+  font-family: var(--serif);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  font-weight: 400;
+}
+
+.platform-payment-grid dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem 1rem;
+  border-top: 1px solid var(--line);
+  margin: 0;
+  padding-top: 0.75rem;
+}
+
+.platform-payment-grid dt {
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.platform-payment-grid dd {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.64rem;
+}
+
+.platform-tenant-table td:first-child {
+  min-width: 180px;
+}
+
+.platform-tenant-table td:first-child a {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.platform-tenant-table td:first-child small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.52rem;
+}
+
+.platform-controls {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.platform-controls > .cms-panel,
+.platform-controls__grid {
+  margin: 0;
+}
+
+.platform-control-note {
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.55;
+}
+
+.platform-flags,
+.platform-failures,
+.platform-audit-list {
+  display: grid;
+}
+
+.platform-flags article,
+.platform-failures article,
+.platform-audit-list article {
+  display: grid;
+  gap: 0.7rem;
+  border-bottom: 1px solid var(--line);
+  padding: 0.85rem 0;
+}
+
+.platform-flags article,
+.platform-failures article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.platform-flags article > div,
+.platform-failures article > div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.platform-flags code {
+  color: var(--metal);
+  font-size: 0.68rem;
+}
+
+.platform-flags strong,
+.platform-failures strong,
+.platform-audit-list strong {
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.platform-flags p,
+.platform-failures p,
+.platform-audit-list p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  line-height: 1.55;
+}
+
+.platform-failures span,
+.platform-audit-list span,
+.platform-audit-list time {
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.platform-flag-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.8fr) minmax(120px, 0.4fr) minmax(220px, 1.2fr) auto;
+  gap: 0.8rem;
+  align-items: end;
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.platform-audit-list article {
+  grid-template-columns: 150px minmax(150px, 0.7fr) minmax(180px, 1fr);
+}
+
+.platform-audit-list p {
+  grid-column: 2 / -1;
+}
+
+@media (max-width: 1000px) {
+  .platform-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .platform-payment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .platform-flag-form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .platform-audit-list article {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-audit-list p {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .platform-admin-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .platform-kpis,
+  .platform-overview-grid,
+  .platform-controls__grid,
+  .platform-payment-grid,
+  .platform-flag-form {
+    grid-template-columns: 1fr;
+  }
+
+  .platform-flags article,
+  .platform-failures article {
+    grid-template-columns: 1fr;
+  }
+}

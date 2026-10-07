@@ -15,6 +15,11 @@ enum TenantRole {
   VIEWER
 }
 
+enum PlatformRole {
+  USER
+  SUPER_ADMIN
+}
+
 enum TenantStatus {
   ACTIVE
   SUSPENDED
@@ -228,6 +233,8 @@ model User {
   sessions      Session[]
   memberships   TenantMembership[]
   customerProfiles Customer[]
+  platformRole      PlatformRole       @default(USER)
+  platformAuditLogs PlatformAuditLog[] @relation("PlatformAuditActor")
   createdAt     DateTime           @default(now())
   updatedAt     DateTime           @updatedAt
 }
@@ -295,6 +302,8 @@ model Tenant {
   commerce        TenantCommerce?
   subscription    TenantSubscription?
   analyticsEvents AnalyticsEvent[]
+  featureFlags     TenantFeatureFlag[]
+  platformAuditLogs PlatformAuditLog[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -843,6 +852,8 @@ model DownloadPackage {
   startedAt         DateTime?
   completedAt       DateTime?
   lastError         String?               @db.Text
+  downloadsCount    Int                   @default(0)
+  lastDownloadedAt  DateTime?
   tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   purchaseLicense   PurchaseLicense       @relation(fields: [purchaseLicenseId], references: [id], onDelete: Cascade)
   createdAt         DateTime              @default(now())
@@ -1024,4 +1035,40 @@ model AnalyticsEvent {
   @@index([tenantId, stemGroupId, type, createdAt])
   @@index([tenantId, sessionId, createdAt])
   @@index([orderId, type])
+}
+
+
+model TenantFeatureFlag {
+  id        String   @id @default(cuid())
+  tenantId  String
+  key       String   @db.VarChar(64)
+  enabled   Boolean  @default(false)
+  note      String?  @db.Text
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, key])
+  @@index([tenantId, enabled])
+}
+
+model PlatformAuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actorEmail  String?
+  tenantId    String?
+  action      String   @db.VarChar(96)
+  targetType  String   @db.VarChar(64)
+  targetId    String   @db.VarChar(191)
+  reason      String?  @db.Text
+  before      Json?
+  after       Json?
+  actor       User?    @relation("PlatformAuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([tenantId, createdAt])
+  @@index([targetType, targetId, createdAt])
 }

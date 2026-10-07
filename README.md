@@ -1409,6 +1409,281 @@ All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe
 Connect, SaaS billing, licensing, Checkout, delivery, package, media, TypeScript,
 and production-build gates remain enabled.
 
+
+## Platform super admin
+
+PR 18 adds a separate global operations control plane at:
+
+/platform-admin
+
+This is not an expanded tenant role. Tenant OWNER or ADMIN permissions do not
+grant access to the platform console.
+
+### Authorization
+
+A user is a platform super admin when either:
+
+- User.platformRole = SUPER_ADMIN, or
+- the user's normalized email is listed in PLATFORM_SUPER_ADMIN_EMAILS
+
+PLATFORM_SUPER_ADMIN_EMAILS is a bootstrap mechanism for initial platform
+operators and emergency access. It is a comma-separated allowlist.
+
+Database SUPER_ADMIN state is global and independent from TenantMembership.
+
+The platform console uses the normal authenticated NextAuth session but does not
+depend on resolving the current request to a tenant. This means platform
+operations remain available even when the tenant associated with the current
+hostname has been suspended.
+
+### Platform overview
+
+The platform overview shows:
+
+- active and suspended tenants
+- SaaS subscription status distribution
+- tracked application storage
+- domain verification/readiness
+- Stripe Connect readiness
+- audio processing-job status
+- ZIP-package job status
+- recent processing/package failures
+- 30-day paid customer commerce volume by currency
+- signed source-file delivery requests
+- signed ZIP-package delivery requests
+- recent platform audit activity
+- the tenant operating estate
+
+Each tenant row exposes:
+
+- tenant status
+- SaaS plan
+- Connect readiness
+- tracked storage
+- Work count
+- membership count
+- domain count
+- feature-flag count
+
+### Storage metrics
+
+Platform storage totals are calculated from application-recorded object sizes for:
+
+- AudioAsset
+- ArtworkAsset
+- ThemeAsset
+- DownloadPackage
+
+These values describe application-tracked stored objects. They do not claim to
+replace the object-storage provider's billable storage meter.
+
+### Delivery activity and bandwidth semantics
+
+Individual licensed-file download redirects already increment
+DownloadEntitlement.downloadsCount.
+
+PR 18 also adds:
+
+- DownloadPackage.downloadsCount
+- DownloadPackage.lastDownloadedAt
+
+and increments them whenever a customer successfully requests a signed ZIP
+package download URL.
+
+The platform console reports:
+
+- number of signed original-file delivery requests
+- original-file bytes requested
+- number of signed ZIP-package delivery requests
+- ZIP-package bytes requested
+
+"Bytes requested" is:
+
+tracked object size x signed delivery request count
+
+This is intentionally not labeled exact bandwidth or CDN egress. A signed URL
+request does not prove the recipient transferred every byte, and object-storage
+or CDN retry/range behavior can differ from the application's request count.
+
+Authoritative billable egress should come from the storage/CDN provider when a
+future provider telemetry integration is added.
+
+### Tenant drill-down
+
+/platform-admin/tenants/<tenantId> shows:
+
+- tenant status
+- Work/storage/domain/member usage
+- SaaS subscription and entitlements
+- Stripe Connect state
+- platform fee
+- domains with ownership/routing/TLS status
+- tenant memberships
+- payment lifecycle totals by currency
+- tenant feature flags
+- failed audio-processing jobs
+- failed ZIP-package jobs
+- tenant-specific platform audit history
+
+### Controlled mutations
+
+PR 18 does not expose arbitrary database editing.
+
+The platform console supports only explicit operations:
+
+- suspend tenant
+- reactivate tenant
+- update the tenant platform fee
+- set a tenant feature-flag override
+- remove a tenant feature-flag override
+- retry an exhausted failed audio-processing job
+- retry an exhausted failed ZIP-package job
+
+Every mutation requires a human-readable operator reason from 8 through 1000
+characters.
+
+### Tenant suspension
+
+Suspension updates Tenant.status to SUSPENDED.
+
+Because public hostname resolution already requires Tenant.status = ACTIVE,
+suspension removes the tenant storefront from normal tenant routing without
+deleting:
+
+- tenant data
+- customer Orders
+- PurchaseLicenses
+- DownloadEntitlements
+- SaaS subscription history
+- Stripe Connect state
+- domains
+- platform audit records
+
+Reactivation restores ACTIVE routing eligibility.
+
+### Platform fee changes
+
+PR 15 intentionally kept platform-fee configuration out of tenant staff control.
+
+PR 18 supplies the operator-facing control.
+
+The platform fee remains integer basis points from 0 through 10000. Updating it
+changes TenantCommerce.platformFeeBps for future Checkout Sessions.
+
+Historical Order and Payment rows keep the connected-account and fee snapshots
+created when Checkout began, so a platform fee change cannot rewrite historical
+settlement records.
+
+### Feature flags
+
+TenantFeatureFlag stores tenant-specific overrides:
+
+- key
+- enabled state
+- optional operator note
+
+Flag keys are normalized lowercase and restricted to 2 through 64 characters
+using letters, numbers, dots, dashes, and underscores.
+
+Feature flags are intentionally inert by default. Creating a flag in the
+platform console does not create arbitrary application behavior. Product code
+must explicitly read a known flag key through tenantFeatureEnabled before a flag
+can affect behavior.
+
+This makes the table useful for controlled rollout while preventing the
+super-admin interface from becoming a generic remote-code/configuration system.
+
+### Failed-job retry behavior
+
+A failed audio-processing retry:
+
+- requires the job to belong to the selected tenant
+- requires status FAILED
+- refuses to retry while the Work is PUBLISHED; the tenant must unpublish it first
+- returns the job to QUEUED
+- resets attempts and worker-lock state
+- clears the old error/completion state
+- returns the source AudioAsset to PROCESSING
+- returns the Work to PROCESSING
+
+A failed ZIP-package retry:
+
+- requires the package to belong to the selected tenant
+- requires status FAILED
+- returns the package to QUEUED
+- resets attempts and worker-lock state
+- clears the old error/completion state
+
+Workers continue to claim these jobs through the existing SKIP LOCKED queues.
+
+### Immutable operator audit
+
+Every platform mutation writes PlatformAuditLog in the same database transaction
+as the mutation.
+
+Audit rows include:
+
+- actor user ID
+- actor email snapshot
+- tenant ID when applicable
+- action
+- target type
+- target ID
+- operator reason
+- before JSON
+- after JSON
+- timestamp
+
+The migration creates PostgreSQL BEFORE UPDATE and BEFORE DELETE triggers that
+reject mutation of PlatformAuditLog.
+
+Audited User and Tenant foreign keys use ON DELETE RESTRICT rather than SET NULL.
+This is deliberate: deleting a referenced actor or tenant would otherwise rewrite
+historical audit data and conflict with the append-only guarantee.
+
+The application exposes no update or delete API for audit rows.
+
+### Platform action API
+
+Tenant mutations go through:
+
+POST /api/platform-admin/tenants/<tenantId>/actions
+
+The endpoint independently checks global platform authorization before dispatching
+to the narrowly defined audited mutation functions.
+
+The server never trusts tenant-admin permissions for this endpoint.
+
+### Validation
+
+CI adds unit coverage for:
+
+- platform feature-key validation
+- required operator reasons
+- feature-note bounds
+- bootstrap super-admin email normalization
+
+A PostgreSQL platform-admin integration test proves:
+
+- tenant suspension
+- tenant reactivation
+- platform-fee override
+- feature-flag creation
+- feature-flag removal
+- failed audio-job retry
+- failed ZIP-package retry
+- expected audit actions are written
+- PlatformAuditLog UPDATE is rejected by the database
+- PlatformAuditLog DELETE is rejected by the database
+
+The integration database is ephemeral. Test actors and tenants referenced by
+audit rows are intentionally not deleted because audit foreign keys are
+retention-protecting RESTRICT references.
+
+All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe
+Connect, SaaS billing, analytics, licensing, Checkout, delivery, package, media,
+TypeScript, and production-build gates remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.
