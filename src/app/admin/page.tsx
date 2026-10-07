@@ -86,6 +86,21 @@ export default async function AdminPage() {
         </section>
       ) : null}
 
+      {hasPermission(membership.role as TenantRole, "members.manage") ? (
+        <section className="cms-panel">
+          <p className="eyebrow">Team & access</p>
+          <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
+            Team accounts
+          </h2>
+          <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
+            Invite tenant staff, assign roles, revoke access, and review team-access history.
+          </p>
+          <Link className="cms-primary-button" href="/admin/team">
+            Manage Team
+          </Link>
+        </section>
+      ) : null}
+
       {hasPermission(membership.role as TenantRole, "tenant.manage") ? (
         <section className="cms-panel">
           <p className="eyebrow">Platform subscription</p>
