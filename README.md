@@ -1684,6 +1684,56 @@ All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe
 Connect, SaaS billing, analytics, licensing, Checkout, delivery, package, media,
 TypeScript, and production-build gates remain enabled.
 
+## Team accounts
+
+PR 19 adds tenant-scoped staff invitations and access management at:
+
+/admin/team
+
+Owners and admins with the members.manage permission can invite staff, update roles, revoke access, resend pending invitations, and inspect recent team-access history.
+
+### Invitation security
+
+- invitation tokens are random 256-bit values and only SHA-256 hashes are stored
+- invitations expire after seven days
+- acceptance requires an authenticated user whose normalized email exactly matches the invited email
+- invitations are tenant-scoped and cannot be redeemed on another tenant
+- revocation and expiration are checked at acceptance time
+- pending invitations reserve SaaS member seats, preventing acceptance from exceeding the plan limit
+- resend rotates the token and expiry rather than extending the old token
+
+### Roles and owner safeguards
+
+The tenant roles remain:
+
+- OWNER
+- ADMIN
+- CATALOG_MANAGER
+- FINANCE
+- VIEWER
+
+Only an OWNER can grant, demote, or revoke an OWNER role. The last OWNER cannot be demoted or removed, so a tenant cannot accidentally orphan its administration.
+
+Revoking a membership removes tenant access immediately without deleting the underlying User record.
+
+### Team audit ledger
+
+PR 19 adds TenantAuditLog. Team invitation, acceptance, role-change, and revocation events are recorded with actor, target, before/after state, and timestamp.
+
+PostgreSQL triggers reject UPDATE and DELETE against TenantAuditLog, making the team-access ledger append-only at the database layer.
+
+### Authentication
+
+Invited staff may use the existing email provider to authenticate during the invitation flow even when they are not customers. Existing customer magic-link behavior remains unchanged.
+
+### Validation
+
+CI adds unit coverage for email normalization, role validation, owner-role protections, invitation expiry state, and token hashing.
+
+A PostgreSQL team-account integration test proves invitation creation, seat-limit reservation, cross-tenant rejection, acceptance, role changes, immediate revocation, last-owner protection, expected audit actions, and database rejection of audit UPDATE/DELETE.
+
+All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe Connect, SaaS billing, analytics, platform-admin, licensing, Checkout, delivery, package, media, TypeScript, and production-build gates remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.

@@ -5356,3 +5356,138 @@ body[data-theme-preset="GALLERY"]::before {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Team accounts */
+
+.team-manager {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.team-invite-form {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(190px, 0.55fr) auto;
+  gap: 0.8rem;
+  align-items: end;
+}
+
+.team-invite-form label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.team-invite-form label > span,
+.team-role-note {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+}
+
+.team-invite-form input,
+.team-invite-form select,
+.team-row select {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  padding: 0.65rem 0.75rem;
+}
+
+.team-role-note {
+  margin: 0.8rem 0 0;
+  line-height: 1.55;
+}
+
+.team-table {
+  display: grid;
+}
+
+.team-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 0.35fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  padding: 0.9rem 0;
+}
+
+.team-row__identity {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.team-row__identity strong {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  font-weight: 400;
+}
+
+.team-row__identity span,
+.team-row__identity em {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.team-row__identity em {
+  color: var(--metal);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.team-audit-list {
+  display: grid;
+}
+
+.team-audit-list article {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 0.8rem;
+  border-bottom: 1px solid var(--line);
+  padding: 0.8rem 0;
+}
+
+.team-audit-list strong {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.team-audit-list span,
+.team-audit-list time {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.invitation-accept {
+  display: flex;
+  min-height: 80vh;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 760px;
+}
+
+.invitation-accept h1 {
+  margin: 0.8rem 0 1rem;
+  font-family: var(--serif);
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  font-weight: 400;
+  letter-spacing: -0.05em;
+}
+
+.invitation-accept > p:not(.micro-label) {
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.invitation-accept__panel {
+  margin-top: 1.2rem;
+}
+
+@media (max-width: 760px) {
+  .team-invite-form,
+  .team-row,
+  .team-audit-list article {
+    grid-template-columns: 1fr;
+  }
+}
