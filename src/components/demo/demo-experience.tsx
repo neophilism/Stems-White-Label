@@ -115,9 +115,9 @@ export function DemoExperience({
           </div>
         </div>
         <aside>
-          <span>Platform surface</span>
-          <strong>20</strong>
-          <small>planned product milestones completed</small>
+          <span>Operating model</span>
+          <strong>One</strong>
+          <small>white-label platform from storefront to operations</small>
         </aside>
       </section>
 
