@@ -323,8 +323,6 @@ model TenantDomain {
   claimExpiresAt    DateTime?
   lastCheckedAt     DateTime?
   lastError         String?               @db.Text
-  downloadsCount    Int                   @default(0)
-  lastDownloadedAt  DateTime?
   tenant            Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
