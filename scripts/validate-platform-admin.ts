@@ -211,6 +211,39 @@ async function main() {
     assert.equal(retriedPackage.status, "QUEUED");
     assert.equal(retriedPackage.attempts, 0);
 
+    // CI reuses the same PostgreSQL database across integration gates. Audit
+    // retention intentionally keeps this tenant alive, so return these fixtures
+    // to inert failed states after proving the retry transition. Otherwise a
+    // later global worker test can legitimately claim these older queued rows.
+    await db.$transaction([
+      db.processingJob.update({
+        where: { id: processingJob.id },
+        data: {
+          status: "FAILED",
+          attempts: 3,
+          completedAt: new Date(),
+          lastError: "Validation cleanup after retry assertion.",
+        },
+      }),
+      db.audioAsset.update({
+        where: { id: asset.id },
+        data: { status: "FAILED" },
+      }),
+      db.work.update({
+        where: { id: work.id },
+        data: { status: "DRAFT" },
+      }),
+      db.downloadPackage.update({
+        where: { id: downloadPackage.id },
+        data: {
+          status: "FAILED",
+          attempts: 3,
+          completedAt: new Date(),
+          lastError: "Validation cleanup after retry assertion.",
+        },
+      }),
+    ]);
+
     const auditRows = await db.platformAuditLog.findMany({
       where: { tenantId: tenant.id },
       orderBy: { createdAt: "asc" },
