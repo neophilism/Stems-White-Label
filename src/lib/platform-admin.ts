@@ -184,6 +184,7 @@ export async function setTenantFeatureFlag(input: {
   if (typeof input.enabled !== "boolean") {
     throw new Error("Feature flag enabled state must be boolean.");
   }
+  const enabled = input.enabled;
   const note = normalizeFeatureNote(input.note);
   const reason = normalizePlatformReason(input.reason);
 
@@ -203,11 +204,11 @@ export async function setTenantFeatureFlag(input: {
       create: {
         tenantId: input.tenantId,
         key,
-        enabled: input.enabled,
+        enabled,
         note,
       },
       update: {
-        enabled: input.enabled,
+        enabled,
         note,
       },
     });
