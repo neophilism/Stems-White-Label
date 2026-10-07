@@ -28,17 +28,29 @@ export const authOptions: NextAuthOptions = {
         if (!tenant) return false;
 
         const normalizedEmail = user.email.trim().toLowerCase();
-        const customer = await db.customer.findUnique({
-          where: {
-            tenantId_normalizedEmail: {
+        const [customer, invitation] = await Promise.all([
+          db.customer.findUnique({
+            where: {
+              tenantId_normalizedEmail: {
+                tenantId: tenant.id,
+                normalizedEmail,
+              },
+            },
+            select: { id: true },
+          }),
+          db.tenantInvitation.findFirst({
+            where: {
               tenantId: tenant.id,
               normalizedEmail,
+              acceptedAt: null,
+              revokedAt: null,
+              expiresAt: { gt: new Date() },
             },
-          },
-          select: { id: true },
-        });
+            select: { id: true },
+          }),
+        ]);
 
-        return Boolean(customer);
+        return Boolean(customer || invitation);
       }
 
       return true;
