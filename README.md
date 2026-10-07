@@ -1734,6 +1734,70 @@ A PostgreSQL team-account integration test proves invitation creation, seat-limi
 
 All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe Connect, SaaS billing, analytics, platform-admin, licensing, Checkout, delivery, package, media, TypeScript, and production-build gates remain enabled.
 
+## Presentation and SaaS demo mode
+
+PR 20 completes the original product roadmap with an opt-in presentation surface
+for prospective artist and label customers.
+
+Enable:
+
+DEMO_MODE=true
+
+The presentation is available at:
+
+/demo
+
+Seed its fictional sample tenant with:
+
+npm run db:demo
+
+The sample tenant slug defaults to stems-demo and can be changed with
+DEMO_TENANT_SLUG.
+
+### Presentation surface
+
+The demo is deliberately customer-facing rather than a development dashboard. It
+contains no branch names, PR state, CI output, database identifiers, internal
+routes, worker controls, or other implementation artifacts.
+
+It demonstrates:
+
+- a polished fictional tenant and example source catalog
+- a live three-theme white-label transformation without mutating tenant data
+- source-group and licensing presentation
+- a guided platform feature tour
+- a four-step tenant onboarding story
+- clean Studio, Label, and House SaaS pricing presentation
+
+Displayed pricing is presentation copy only. Actual production SaaS entitlements
+and billing remain authoritative from the Stripe Billing configuration implemented
+in PR 16.
+
+### Safe demo behavior
+
+DEMO_MODE is false unless explicitly enabled. When disabled, /demo returns the
+normal not-found response.
+
+The fictional catalog contains no real artist works, audio objects, customer
+orders, payments, or credentials. Its license text explicitly identifies itself
+as demonstration material and it cannot silently substitute for production
+commerce configuration.
+
+Theme switching in /demo is client-side presentation state. It does not write to
+TenantTheme or change any production tenant.
+
+### Validation
+
+CI adds unit coverage for explicit demo gating, demo-tenant configuration, theme
+configuration, feature-tour completeness, and pricing presentation.
+
+A PostgreSQL integration test seeds an isolated demo tenant and verifies its
+white-label entitlement, theme, published collection, three example Works,
+creator-defined source groups, editorial sections, Reveal sequences, and versioned
+license offerings.
+
+All previous validation gates remain enabled.
+
 ## Local setup
 
 1. Copy .env.example to .env.

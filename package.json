@@ -29,7 +29,9 @@
     "test:billing-integration": "tsx scripts/validate-saas-billing.ts",
     "test:analytics-integration": "tsx scripts/validate-analytics.ts",
     "test:platform-admin-integration": "tsx scripts/validate-platform-admin.ts",
-    "test:team-integration": "tsx scripts/validate-team-accounts.ts"
+    "test:team-integration": "tsx scripts/validate-team-accounts.ts",
+    "db:demo": "tsx src/lib/demo-seed.ts",
+    "test:demo-integration": "tsx scripts/validate-demo-mode.ts"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
