@@ -1,17 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { trackStorefrontEvent } from "@/lib/analytics-client";
 import {
   clampPlaybackOffset,
   formatPlaybackTime,
-  stemIsAudible,
-  waveformPolygon,
-  type PlaybackMode,
 } from "@/lib/player-state";
 import type { PlayerManifest } from "@/lib/player-manifest";
-import { resolveRevealState } from "@/lib/reveal-state";
 
 type SourceGroup = {
   id: string;
@@ -21,80 +17,40 @@ type SourceGroup = {
 
 type StemPlayerProps = {
   workSlug: string;
-  hasFullMix: boolean;
-  revealSequenceName: string | null;
   sourceGroups: SourceGroup[];
   durationMs: number | null;
 };
 
-const FULL_MIX_KEY = "__full_mix__";
-
-function stemKey(stemGroupId: string) {
-  return "stem:" + stemGroupId;
-}
+const DRIFT_CORRECTION_SECONDS = 0.08;
 
 export function StemPlayer({
   workSlug,
-  hasFullMix,
-  revealSequenceName,
   sourceGroups,
   durationMs,
 }: StemPlayerProps) {
-  const [mode, setMode] = useState<PlaybackMode>(
-    hasFullMix ? "full" : "stems",
-  );
   const [muted, setMuted] = useState<Set<string>>(() => new Set());
-  const [soloed, setSoloed] = useState<Set<string>>(() => new Set());
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [loadedTracks, setLoadedTracks] = useState(0);
   const [totalTracks, setTotalTracks] = useState(0);
   const [positionSeconds, setPositionSeconds] = useState(0);
   const [durationSeconds, setDurationSeconds] = useState(
     durationMs ? durationMs / 1000 : 0,
   );
-  const [masterVolume, setMasterVolume] = useState(1);
   const [error, setError] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [revealSequence, setRevealSequence] =
-    useState<PlayerManifest["revealSequence"]>(null);
-  const [isRevealActive, setIsRevealActive] = useState(false);
-  const [revealCaption, setRevealCaption] = useState<string | null>(null);
-  const [waveformPoints, setWaveformPoints] = useState<number[]>([]);
 
-  const contextRef = useRef<AudioContext | null>(null);
-  const manifestRef = useRef<PlayerManifest | null>(null);
-  const buffersRef = useRef<Map<string, AudioBuffer>>(new Map());
-  const gainsRef = useRef<Map<string, GainNode>>(new Map());
-  const masterGainRef = useRef<GainNode | null>(null);
-  const sourcesRef = useRef<Map<string, AudioBufferSourceNode>>(new Map());
-  const startedAtRef = useRef(0);
+  const audioRef = useRef<Map<string, HTMLAudioElement>>(new Map());
+  const primaryStemIdRef = useRef<string | null>(null);
   const offsetRef = useRef(0);
   const durationRef = useRef(durationMs ? durationMs / 1000 : 0);
   const animationRef = useRef<number | null>(null);
   const playingRef = useRef(false);
-  const revealActiveRef = useRef(false);
-  const revealStepIndexRef = useRef(-2);
 
   const previewGroupCount = sourceGroups.filter(
     (source) => source.hasPreview,
   ).length;
-  const playableTrackCount = previewGroupCount + (hasFullMix ? 1 : 0);
-  const canPlay = playableTrackCount > 0;
-  const waveformShape = waveformPolygon(waveformPoints);
-
-  function stopSources() {
-    for (const source of sourcesRef.current.values()) {
-      try {
-        source.stop();
-      } catch {
-        // Source may already have naturally ended.
-      }
-      source.disconnect();
-    }
-
-    sourcesRef.current.clear();
-  }
+  const canPlay = previewGroupCount > 0;
 
   function stopAnimation() {
     if (animationRef.current !== null) {
@@ -103,114 +59,88 @@ export function StemPlayer({
     }
   }
 
-  function currentPosition() {
-    const context = contextRef.current;
+  function pauseAllStreams() {
+    for (const audio of audioRef.current.values()) {
+      audio.pause();
+    }
+  }
 
-    if (!context || !playingRef.current) {
-      return offsetRef.current;
+  function clearStreams() {
+    pauseAllStreams();
+
+    for (const audio of audioRef.current.values()) {
+      audio.removeAttribute("src");
+      audio.load();
     }
 
+    audioRef.current.clear();
+    primaryStemIdRef.current = null;
+  }
+
+  function currentPosition() {
+    const primaryId = primaryStemIdRef.current;
+    const primary = primaryId ? audioRef.current.get(primaryId) : null;
+
+    if (!primary) return offsetRef.current;
+
     return clampPlaybackOffset(
-      context.currentTime - startedAtRef.current,
+      primary.currentTime,
       durationRef.current,
     );
   }
 
-  function applyGainState(
-    nextMode: PlaybackMode,
-    nextMuted: ReadonlySet<string>,
-    nextSoloed: ReadonlySet<string>,
-  ) {
-    const context = contextRef.current;
-    if (!context) return;
+  function applyMuteState(nextMuted: ReadonlySet<string>) {
+    for (const [stemGroupId, audio] of audioRef.current.entries()) {
+      audio.muted = nextMuted.has(stemGroupId);
+      audio.volume = 1;
+      audio.defaultPlaybackRate = 1;
+      audio.playbackRate = 1;
+    }
+  }
 
-    for (const [key, gain] of gainsRef.current.entries()) {
-      let audible = false;
-
-      if (key === FULL_MIX_KEY) {
-        audible = nextMode === "full";
-      } else {
-        const stemGroupId = key.replace(/^stem:/, "");
-        audible = stemIsAudible(
-          stemGroupId,
-          nextMode,
-          nextMuted,
-          nextSoloed,
-        );
+  function setAllStreamPositions(position: number) {
+    for (const audio of audioRef.current.values()) {
+      try {
+        audio.currentTime = position;
+      } catch {
+        // Metadata may still be settling for a just-created media element.
       }
-
-      gain.gain.cancelScheduledValues(context.currentTime);
-      gain.gain.setTargetAtTime(audible ? 1 : 0, context.currentTime, 0.008);
     }
   }
 
-  function updateTrackGains() {
-    applyGainState(mode, muted, soloed);
-  }
-
-  function applyRevealStateAt(position: number, force = false) {
-    const sequence = manifestRef.current?.revealSequence;
-    const manifest = manifestRef.current;
-
-    if (!sequence || !manifest) return;
-
-    const availableStemIds = new Set(
-      manifest.stems.map((stem) => stem.stemGroupId),
-    );
-    const resolved = resolveRevealState(
-      sequence.steps,
-      Math.max(0, Math.round(position * 1000)),
-      availableStemIds,
-    );
-
-    if (!force && resolved.stepIndex === revealStepIndexRef.current) {
-      return;
-    }
-
-    revealStepIndexRef.current = resolved.stepIndex;
-    setMode(resolved.mode);
-    setMuted(resolved.muted);
-    setSoloed(new Set());
-    setRevealCaption(resolved.caption);
-    applyGainState(resolved.mode, resolved.muted, new Set());
-  }
-
-  function exitReveal() {
-    revealActiveRef.current = false;
-    revealStepIndexRef.current = -2;
-    setIsRevealActive(false);
-    setRevealCaption(null);
-  }
-
   useEffect(() => {
-    updateTrackGains();
-  }, [mode, muted, soloed]);
-
-  useEffect(() => {
-    const context = contextRef.current;
-    const masterGain = masterGainRef.current;
-
-    if (!context || !masterGain) return;
-
-    masterGain.gain.cancelScheduledValues(context.currentTime);
-    masterGain.gain.setTargetAtTime(
-      masterVolume,
-      context.currentTime,
-      0.008,
-    );
-  }, [masterVolume]);
+    applyMuteState(muted);
+  }, [muted]);
 
   useEffect(() => {
     return () => {
       stopAnimation();
-      stopSources();
-      const context = contextRef.current;
-      contextRef.current = null;
-      if (context && context.state !== "closed") {
-        void context.close();
-      }
+      clearStreams();
     };
   }, []);
+
+  async function waitUntilPlayable(audio: HTMLAudioElement) {
+    if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return;
+
+    await new Promise<void>((resolve, reject) => {
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error("A preview stream could not be prepared."));
+      };
+      const cleanup = () => {
+        audio.removeEventListener("canplay", onReady);
+        audio.removeEventListener("error", onError);
+      };
+
+      audio.addEventListener("canplay", onReady, { once: true });
+      audio.addEventListener("error", onError, { once: true });
+      audio.load();
+    });
+  }
 
   async function loadPlayer() {
     if (isLoaded) return true;
@@ -220,160 +150,96 @@ export function StemPlayer({
     setLoadedTracks(0);
 
     try {
-      const manifestResponse = await fetch(
+      const response = await fetch(
         "/api/works/" + encodeURIComponent(workSlug) + "/audio-manifest",
-        {
-          cache: "no-store",
-        },
+        { cache: "no-store" },
       );
 
-      if (!manifestResponse.ok) {
-        const payload = (await manifestResponse.json().catch(() => null)) as
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
           | { error?: string }
           | null;
-        throw new Error(payload?.error || "Unable to load the listening room.");
+        throw new Error(payload?.error || "Unable to load the stem player.");
       }
 
-      const manifest = (await manifestResponse.json()) as PlayerManifest;
-      const tracks = [
-        ...(manifest.fullMix
-          ? [{ key: FULL_MIX_KEY, track: manifest.fullMix }]
-          : []),
-        ...manifest.stems.map((track) => ({
-          key: stemKey(track.stemGroupId),
-          track,
-        })),
-      ];
+      const manifest = (await response.json()) as PlayerManifest;
+      const stems = manifest.stems;
 
-      if (tracks.length === 0) {
-        throw new Error("No listening previews are available for this Work.");
+      if (stems.length === 0) {
+        throw new Error("No stem previews are available for this Work.");
       }
 
-      setTotalTracks(tracks.length);
-
-      const AudioContextConstructor =
-        window.AudioContext ||
-        (
-          window as typeof window & {
-            webkitAudioContext?: typeof AudioContext;
-          }
-        ).webkitAudioContext;
-
-      if (!AudioContextConstructor) {
-        throw new Error("This browser does not support the Web Audio API.");
-      }
-
-      const context = new AudioContextConstructor();
-      const masterGain = context.createGain();
-      masterGain.gain.value = masterVolume;
-      masterGain.connect(context.destination);
-
-      contextRef.current = context;
-      masterGainRef.current = masterGain;
-      manifestRef.current = manifest;
-      setRevealSequence(manifest.revealSequence);
-
-      const waveformUrl =
-        manifest.fullMix?.waveformUrl ??
-        manifest.stems.find((track) => Boolean(track.waveformUrl))?.waveformUrl ??
-        null;
-
-      const waveformLoad = waveformUrl
-        ? fetch(waveformUrl, { cache: "no-store" })
-            .then(async (response) => {
-              if (!response.ok) return;
-              const payload = (await response.json()) as {
-                points?: unknown;
-              };
-
-              if (
-                Array.isArray(payload.points) &&
-                payload.points.length <= 5000 &&
-                payload.points.every(
-                  (point) =>
-                    typeof point === "number" &&
-                    Number.isFinite(point) &&
-                    point >= 0 &&
-                    point <= 1,
-                )
-              ) {
-                setWaveformPoints(payload.points);
-              }
-            })
-            .catch(() => undefined)
-        : Promise.resolve();
+      clearStreams();
+      setTotalTracks(stems.length);
 
       let completed = 0;
 
-      await Promise.all([
-        ...tracks.map(async ({ key, track }) => {
-          const response = await fetch(track.url, {
-            cache: "no-store",
-          });
+      await Promise.all(
+        stems.map(async (stem) => {
+          const audio = new Audio();
+          audio.preload = "auto";
+          audio.src = stem.url;
+          audio.volume = 1;
+          audio.defaultPlaybackRate = 1;
+          audio.playbackRate = 1;
+          audio.muted = muted.has(stem.stemGroupId);
 
-          if (!response.ok) {
-            throw new Error("A preview source could not be loaded.");
-          }
-
-          const encodedAudio = await response.arrayBuffer();
-          const buffer = await context.decodeAudioData(encodedAudio.slice(0));
-
-          const gain = context.createGain();
-          gain.gain.value = 0;
-          gain.connect(masterGain);
-
-          buffersRef.current.set(key, buffer);
-          gainsRef.current.set(key, gain);
+          await waitUntilPlayable(audio);
+          audioRef.current.set(stem.stemGroupId, audio);
 
           completed += 1;
           setLoadedTracks(completed);
         }),
-        waveformLoad,
-      ]);
-
-      const bufferDuration = Math.max(
-        ...Array.from(buffersRef.current.values()).map(
-          (buffer) => buffer.duration,
-        ),
       );
-      const resolvedDuration =
+
+      primaryStemIdRef.current = stems[0]?.stemGroupId ?? null;
+
+      const mediaDurations = Array.from(audioRef.current.values())
+        .map((audio) => audio.duration)
+        .filter((value) => Number.isFinite(value) && value > 0);
+
+      const shortestMediaDuration =
+        mediaDurations.length > 0 ? Math.min(...mediaDurations) : 0;
+      const declaredDuration =
         manifest.durationMs && manifest.durationMs > 0
-          ? Math.min(manifest.durationMs / 1000, bufferDuration)
-          : bufferDuration;
+          ? manifest.durationMs / 1000
+          : 0;
+      const resolvedDuration =
+        declaredDuration > 0 && shortestMediaDuration > 0
+          ? Math.min(declaredDuration, shortestMediaDuration)
+          : declaredDuration || shortestMediaDuration;
 
       durationRef.current = resolvedDuration;
       setDurationSeconds(resolvedDuration);
       setIsLoaded(true);
-      updateTrackGains();
+      applyMuteState(muted);
 
       return true;
     } catch (loadError) {
+      clearStreams();
+      setIsLoaded(false);
       const message =
         loadError instanceof Error
           ? loadError.message
-          : "Unable to load the listening room.";
-
-      stopSources();
-      gainsRef.current.clear();
-      buffersRef.current.clear();
-
-      const context = contextRef.current;
-      contextRef.current = null;
-      masterGainRef.current = null;
-      manifestRef.current = null;
-      setRevealSequence(null);
-      setWaveformPoints([]);
-      exitReveal();
-
-      if (context && context.state !== "closed") {
-        await context.close().catch(() => undefined);
-      }
-
+          : "Unable to load the stem player.";
       setError(message);
-      setIsLoaded(false);
       return false;
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  function correctStreamDrift(referencePosition: number) {
+    for (const [stemGroupId, audio] of audioRef.current.entries()) {
+      if (stemGroupId === primaryStemIdRef.current) continue;
+
+      if (Math.abs(audio.currentTime - referencePosition) > DRIFT_CORRECTION_SECONDS) {
+        try {
+          audio.currentTime = referencePosition;
+        } catch {
+          // A temporarily unseekable stream will be corrected on a later frame.
+        }
+      }
     }
   }
 
@@ -381,35 +247,27 @@ export function StemPlayer({
     stopAnimation();
 
     const tick = () => {
-      const nextPosition = currentPosition();
+      const position = currentPosition();
 
-      if (nextPosition >= durationRef.current && durationRef.current > 0) {
-        stopSources();
+      if (
+        durationRef.current > 0 &&
+        position >= durationRef.current - 0.02
+      ) {
+        pauseAllStreams();
         offsetRef.current = durationRef.current;
         setPositionSeconds(durationRef.current);
         playingRef.current = false;
         setIsPlaying(false);
-
-        if (revealActiveRef.current) {
-          revealActiveRef.current = false;
-          setIsRevealActive(false);
-          setRevealCaption("Reveal complete.");
-          trackStorefrontEvent({
-            type: "REVEAL_COMPLETE",
-            workSlug,
-            positionMs: Math.round(durationRef.current * 1000),
-          });
-        }
-
         stopAnimation();
         return;
       }
 
-      if (revealActiveRef.current) {
-        applyRevealStateAt(nextPosition);
+      if (playingRef.current) {
+        correctStreamDrift(position);
       }
 
-      setPositionSeconds(nextPosition);
+      offsetRef.current = position;
+      setPositionSeconds(position);
       animationRef.current = requestAnimationFrame(tick);
     };
 
@@ -423,13 +281,6 @@ export function StemPlayer({
     const loaded = alreadyLoaded ? true : await loadPlayer();
     if (!loaded) return;
 
-    const context = contextRef.current;
-    if (!context) return;
-
-    if (context.state === "suspended") {
-      await context.resume();
-    }
-
     let offset = offsetRef.current;
 
     if (
@@ -441,26 +292,22 @@ export function StemPlayer({
       setPositionSeconds(0);
     }
 
-    stopSources();
+    setAllStreamPositions(offset);
+    applyMuteState(muted);
 
-    const scheduledStart = context.currentTime + 0.06;
+    const results = await Promise.allSettled(
+      Array.from(audioRef.current.values(), (audio) => audio.play()),
+    );
 
-    for (const [key, buffer] of buffersRef.current.entries()) {
-      if (offset >= buffer.duration) continue;
-
-      const gain = gainsRef.current.get(key);
-      if (!gain) continue;
-
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.connect(gain);
-      source.start(scheduledStart, offset);
-      sourcesRef.current.set(key, source);
+    if (results.some((result) => result.status === "rejected")) {
+      pauseAllStreams();
+      setError("The browser could not start every stem stream together.");
+      return;
     }
 
-    startedAtRef.current = scheduledStart - offset;
     playingRef.current = true;
     setIsPlaying(true);
+    setError(null);
     startAnimation();
 
     if (emitAnalytics) {
@@ -476,12 +323,13 @@ export function StemPlayer({
     const nextOffset = currentPosition();
 
     stopAnimation();
-    stopSources();
+    pauseAllStreams();
 
     offsetRef.current = nextOffset;
     setPositionSeconds(nextOffset);
     playingRef.current = false;
     setIsPlaying(false);
+
     trackStorefrontEvent({
       type: "PLAYER_PAUSE",
       workSlug,
@@ -508,59 +356,23 @@ export function StemPlayer({
     const wasPlaying = isPlaying;
 
     stopAnimation();
-    stopSources();
+    pauseAllStreams();
+    setAllStreamPositions(clamped);
+
     offsetRef.current = clamped;
     setPositionSeconds(clamped);
     playingRef.current = false;
     setIsPlaying(false);
 
-    if (revealActiveRef.current) {
-      applyRevealStateAt(clamped, true);
-    }
-
     if (wasPlaying) {
-      await startPlayback(false, false);
+      await startPlayback(true, false);
     }
   }
 
-  async function startReveal() {
-    const loaded = await loadPlayer();
-    if (!loaded) return;
+  function toggleMute(stemGroupId: string) {
+    const willUnmute = muted.has(stemGroupId);
 
-    const sequence = manifestRef.current?.revealSequence;
-
-    if (!sequence || sequence.steps.length === 0) {
-      setError("No playable Reveal the Record sequence is available.");
-      return;
-    }
-
-    stopAnimation();
-    stopSources();
-
-    playingRef.current = false;
-    setIsPlaying(false);
-    offsetRef.current = 0;
-    setPositionSeconds(0);
-
-    revealActiveRef.current = true;
-    revealStepIndexRef.current = -2;
-    setIsRevealActive(true);
-    setError(null);
-    applyRevealStateAt(0, true);
-    trackStorefrontEvent({
-      type: "REVEAL_START",
-      workSlug,
-      positionMs: 0,
-    });
-
-    await startPlayback(true, false);
-  }
-
-  function toggleSet(
-    setter: Dispatch<SetStateAction<Set<string>>>,
-    stemGroupId: string,
-  ) {
-    setter((current) => {
+    setMuted((current) => {
       const next = new Set(current);
 
       if (next.has(stemGroupId)) {
@@ -571,13 +383,7 @@ export function StemPlayer({
 
       return next;
     });
-  }
 
-  function toggleMute(stemGroupId: string) {
-    const willUnmute = muted.has(stemGroupId);
-    exitReveal();
-    setMode("stems");
-    toggleSet(setMuted, stemGroupId);
     trackStorefrontEvent({
       type: willUnmute ? "STEM_UNMUTE" : "STEM_MUTE",
       workSlug,
@@ -586,36 +392,13 @@ export function StemPlayer({
     });
   }
 
-  function toggleSolo(stemGroupId: string) {
-    const willUnsolo = soloed.has(stemGroupId);
-    exitReveal();
-    setMode("stems");
-    toggleSet(setSoloed, stemGroupId);
-    trackStorefrontEvent({
-      type: willUnsolo ? "STEM_UNSOLO" : "STEM_SOLO",
-      workSlug,
-      stemGroupId,
-      positionMs: Math.round(currentPosition() * 1000),
-    });
-  }
-
-  function useAllSources() {
-    exitReveal();
-    setMode("stems");
+  function unmuteAll() {
     setMuted(new Set());
-    setSoloed(new Set());
     trackStorefrontEvent({
       type: "ALL_SOURCES",
       workSlug,
       positionMs: Math.round(currentPosition() * 1000),
     });
-  }
-
-  function resetMix() {
-    exitReveal();
-    setMuted(new Set());
-    setSoloed(new Set());
-    setMode(hasFullMix ? "full" : "stems");
   }
 
   return (
@@ -634,67 +417,21 @@ export function StemPlayer({
               : isPlaying
                 ? "Pause"
                 : isLoaded
-                  ? "Play"
-                  : "Load & play"}
+                  ? "Play all stems"
+                  : "Load & play all stems"}
           </span>
         </button>
 
         <div className="stem-player__mode-controls">
           <button
-            className="stem-player__reveal-button"
-            aria-pressed={isRevealActive}
-            disabled={!revealSequenceName || !canPlay || isLoading}
-            onClick={() => void startReveal()}
+            disabled={muted.size === 0 || !canPlay}
+            onClick={unmuteAll}
             type="button"
           >
-            {isRevealActive ? "Restart Reveal" : "Reveal the Record"}
-          </button>
-          <button
-            aria-pressed={mode === "full" && !isRevealActive}
-            disabled={!hasFullMix}
-            onClick={() => {
-              exitReveal();
-              setMode("full");
-              trackStorefrontEvent({
-                type: "FULL_MIX",
-                workSlug,
-                positionMs: Math.round(currentPosition() * 1000),
-              });
-            }}
-            type="button"
-          >
-            Full Mix
-          </button>
-          <button
-            aria-pressed={mode === "stems" && muted.size === 0 && soloed.size === 0}
-            disabled={previewGroupCount === 0}
-            onClick={useAllSources}
-            type="button"
-          >
-            All Sources
-          </button>
-          <button disabled={!canPlay} onClick={resetMix} type="button">
-            Reset Mix
+            Unmute all
           </button>
         </div>
       </div>
-
-      {waveformShape ? (
-        <div className="stem-player__waveform" aria-hidden="true">
-          <svg viewBox="0 0 1000 100" preserveAspectRatio="none">
-            <polygon points={waveformShape} />
-          </svg>
-          <span
-            className="stem-player__waveform-playhead"
-            style={{
-              left:
-                (durationSeconds > 0
-                  ? Math.min(100, (positionSeconds / durationSeconds) * 100)
-                  : 0) + "%",
-            }}
-          />
-        </div>
-      ) : null}
 
       <div className="stem-player__timeline">
         <span>{formatPlaybackTime(positionSeconds)}</span>
@@ -711,61 +448,6 @@ export function StemPlayer({
         <span>{formatPlaybackTime(durationSeconds)}</span>
       </div>
 
-      {revealSequenceName ? (
-        <div
-          className={
-            "stem-player__reveal-panel" +
-            (isRevealActive ? " stem-player__reveal-panel--active" : "")
-          }
-        >
-          <div className="stem-player__reveal-copy">
-            <span className="micro-label">Reveal the Record</span>
-            <strong>{revealSequence?.name ?? revealSequenceName}</strong>
-            {revealSequence?.description ? (
-              <p>{revealSequence.description}</p>
-            ) : null}
-            {revealCaption ? (
-              <p className="stem-player__reveal-caption">{revealCaption}</p>
-            ) : null}
-          </div>
-
-          {revealSequence && revealSequence.steps.length > 0 ? (
-            <div
-              className="stem-player__reveal-timeline"
-              aria-label="Reveal sequence timeline"
-            >
-              <div className="stem-player__reveal-track">
-                {revealSequence.steps.map((step, index) => {
-                  const maxMs = Math.max(
-                    durationSeconds * 1000,
-                    revealSequence.steps.at(-1)?.atMs ?? 1,
-                    1,
-                  );
-                  const left = Math.min(100, (step.atMs / maxMs) * 100);
-                  const passed = positionSeconds * 1000 >= step.atMs;
-
-                  return (
-                    <span
-                      className={
-                        "stem-player__reveal-marker" +
-                        (passed ? " stem-player__reveal-marker--passed" : "")
-                      }
-                      key={index}
-                      style={{ left: left + "%" }}
-                      title={
-                        (step.caption ?? step.action.replaceAll("_", " ")) +
-                        " at " +
-                        formatPlaybackTime(step.atMs / 1000)
-                      }
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       <div className="stem-player__status-row">
         <div>
           <span
@@ -779,44 +461,34 @@ export function StemPlayer({
             {error
               ? error
               : isLoading
-                ? "Preparing " + loadedTracks + " of " + totalTracks + " preview sources"
+                ? "Preparing " + loadedTracks + " of " + totalTracks + " synchronized streams"
                 : isLoaded
-                  ? "Synchronized source clock ready"
+                  ? muted.size +
+                    " muted · " +
+                    (previewGroupCount - muted.size) +
+                    " audible"
                   : canPlay
-                    ? playableTrackCount + " preview sources available"
-                    : "No preview sources are registered yet"}
+                    ? previewGroupCount + " synchronized stem streams available"
+                    : "No stem previews are registered yet"}
           </span>
         </div>
-
-        <label className="stem-player__volume">
-          <span>Volume</span>
-          <input
-            aria-label="Master volume"
-            max={1}
-            min={0}
-            onChange={(event) => setMasterVolume(Number(event.target.value))}
-            step={0.01}
-            type="range"
-            value={masterVolume}
-          />
-        </label>
       </div>
 
       {sourceGroups.length > 0 ? (
         <div className="stem-player__sources">
           {sourceGroups.map((source, index) => {
             const isMuted = muted.has(source.id);
-            const isSoloed = soloed.has(source.id);
-            const audible = source.hasPreview
-              ? stemIsAudible(source.id, mode, muted, soloed)
-              : false;
 
             return (
               <div
                 className={
                   "stem-player__source" +
-                  (audible ? " stem-player__source--active" : "") +
-                  (!source.hasPreview ? " stem-player__source--unavailable" : "")
+                  (source.hasPreview && !isMuted
+                    ? " stem-player__source--active"
+                    : "") +
+                  (!source.hasPreview
+                    ? " stem-player__source--unavailable"
+                    : "")
                 }
                 key={source.id}
               >
@@ -826,29 +498,22 @@ export function StemPlayer({
                 <span className="stem-player__source-name">{source.label}</span>
                 <span className="stem-player__source-state">
                   {source.hasPreview
-                    ? audible
-                      ? "In mix"
-                      : "Silent"
+                    ? isMuted
+                      ? "Muted"
+                      : "Audible"
                     : "Preview pending"}
                 </span>
                 <div className="stem-player__source-controls">
                   <button
-                    aria-label={"Mute " + source.label}
+                    aria-label={
+                      (isMuted ? "Unmute " : "Mute ") + source.label
+                    }
                     aria-pressed={isMuted}
                     disabled={!source.hasPreview}
                     onClick={() => toggleMute(source.id)}
                     type="button"
                   >
-                    M
-                  </button>
-                  <button
-                    aria-label={"Solo " + source.label}
-                    aria-pressed={isSoloed}
-                    disabled={!source.hasPreview}
-                    onClick={() => toggleSolo(source.id)}
-                    type="button"
-                  >
-                    S
+                    {isMuted ? "Unmute" : "Mute"}
                   </button>
                 </div>
               </div>
