@@ -9,8 +9,8 @@ const source = readFileSync(
 
 test("public stem player exposes mute-only source controls", () => {
   assert.match(source, /toggleMute/);
-  assert.match(source, />Mute</);
-  assert.match(source, />Unmute</);
+  assert.match(source, /"Mute"/);
+  assert.match(source, /"Unmute"/);
   assert.match(source, /Play all stems/);
 
   assert.doesNotMatch(source, /toggleSolo/);
