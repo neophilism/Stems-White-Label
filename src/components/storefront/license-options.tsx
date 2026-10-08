@@ -42,8 +42,10 @@ export function LicenseOptions({ products }: LicenseOptionsProps) {
         <p className="micro-label">Rights &amp; License</p>
         <h2>Acquire the source material.</h2>
         <p>
-          Each offering is defined by this Work's creator. The exact license
-          version accepted at purchase will be preserved with the order.
+          Listening to, receiving, copying, or otherwise obtaining the audio
+          does not grant commercial-use rights. Commercial use is authorized
+          only by purchasing and complying with the applicable license. The
+          exact license version accepted at purchase is preserved with the order.
         </p>
       </div>
 
