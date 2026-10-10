@@ -25,6 +25,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
 
   try {
+    const hostHeader = (await headers()).get("host");
+    const origin = checkoutReturnOrigin(request.url, hostHeader, process.env.NODE_ENV === "production");
     const quote = await quoteLicenseProducts(tenant.id, body?.licenseProductIds);
     assertAcceptedLicenseVersions(quote, body?.acceptedLicenseVersionIds);
 
@@ -46,8 +48,6 @@ export async function POST(request: Request) {
 
     try {
       const stripe = getStripe();
-      const hostHeader = (await headers()).get("host");
-      const origin = checkoutReturnOrigin(request.url, hostHeader, process.env.NODE_ENV === "production");
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_creation: "always",
