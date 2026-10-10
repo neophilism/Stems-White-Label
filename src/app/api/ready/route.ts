@@ -1,4 +1,4 @@
-import { readinessResponse } from "@/app/api/health/route";
+import { readinessResponse } from "@/lib/readiness";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
