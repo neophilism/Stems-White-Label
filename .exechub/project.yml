@@ -1,0 +1,22 @@
+project:
+  name: Stems-White-Label
+  display_name: Stems White Label
+  repository: neophilism/Stems-White-Label
+  status: active-development
+
+roadmap:
+  version: 1
+  planned_prs: 30
+  approved: true
+
+milestones:
+  - name: Original platform foundation and full product
+    prs: 20
+  - name: Public player and deployment readiness
+    prs: 2
+  - name: Live monitoring and infrastructure
+    prs: 3
+  - name: Commerce and flagship pilot
+    prs: 3
+  - name: Production release and acceptance
+    prs: 2
