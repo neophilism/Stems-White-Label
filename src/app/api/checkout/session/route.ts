@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import {
@@ -6,6 +6,7 @@ import {
   normalizeAnalyticsSessionId,
   recordSystemAnalyticsEvent,
 } from "@/lib/analytics";
+import { checkoutReturnOrigin } from "@/lib/checkout-origin";
 import {
   assertAcceptedLicenseVersions,
   createPendingOrder,
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
 
   try {
+    const hostHeader = (await headers()).get("host");
+    const origin = checkoutReturnOrigin(request.url, hostHeader, process.env.NODE_ENV === "production");
     const quote = await quoteLicenseProducts(tenant.id, body?.licenseProductIds);
     assertAcceptedLicenseVersions(quote, body?.acceptedLicenseVersionIds);
 
@@ -45,7 +48,6 @@ export async function POST(request: Request) {
 
     try {
       const stripe = getStripe();
-      const origin = new URL(request.url).origin;
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         customer_creation: "always",
