@@ -1,5 +1,7 @@
 # Stems White Label
 
+**Complete original/expanded development plan:** [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md).
+
 A multi-tenant white-label platform for artists and labels to present and license
 musical source material in a bespoke storefront rather than a commodity marketplace.
 
