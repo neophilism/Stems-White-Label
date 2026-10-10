@@ -3,8 +3,6 @@ import { StemPlayer } from "@/components/storefront/stem-player";
 type ListeningRoomProps = {
   workSlug: string;
   durationMs: number | null;
-  hasFullMix: boolean;
-  revealSequenceName: string | null;
   sourceGroups: Array<{
     id: string;
     label: string;
@@ -15,26 +13,22 @@ type ListeningRoomProps = {
 export function ListeningRoom({
   workSlug,
   durationMs,
-  hasFullMix,
-  revealSequenceName,
   sourceGroups,
 }: ListeningRoomProps) {
   return (
     <section className="listening-room" aria-labelledby="listening-room-heading">
       <div className="listening-room__introduction">
         <p className="micro-label">Listening room</p>
-        <h2 id="listening-room-heading">Hear the construction.</h2>
+        <h2 id="listening-room-heading">Hear every source in sync.</h2>
         <p>
-          Every available source preview is locked to one playback clock. Explore
-          the sections manually, or let the creator's Reveal the Record sequence
-          reconstruct the arrangement on its own timeline.
+          All available stem previews start together on one timeline. Mute or
+          unmute any number of stems while they continue to run in sync. There
+          are no per-stem balance, pan, solo, EQ, or other mix controls.
         </p>
       </div>
 
       <StemPlayer
         durationMs={durationMs}
-        hasFullMix={hasFullMix}
-        revealSequenceName={revealSequenceName}
         sourceGroups={sourceGroups}
         workSlug={workSlug}
       />

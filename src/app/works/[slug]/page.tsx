@@ -53,12 +53,6 @@ export default async function WorkPage({ params }: WorkPageProps) {
   if (!work) notFound();
 
   const stemLabels = work.stemGroups.map((stem) => stem.label);
-  const hasFullMix = work.audioAssets.some(
-    (asset) =>
-      asset.kind === "PREVIEW" &&
-      asset.stemGroupId === null &&
-      Boolean(asset.storageKey),
-  );
   const playerSourceGroups = work.stemGroups.map((stem) => ({
     id: stem.id,
     label: stem.label,
@@ -66,7 +60,6 @@ export default async function WorkPage({ params }: WorkPageProps) {
       (asset) => asset.kind === "PREVIEW" && Boolean(asset.storageKey),
     ),
   }));
-  const revealSequence = work.revealSequences[0] ?? null;
   const relatedWorks = await getRelatedPublishedWorks(
     tenant.id,
     work.id,
@@ -121,8 +114,6 @@ export default async function WorkPage({ params }: WorkPageProps) {
 
           <ListeningRoom
             durationMs={work.durationMs}
-            hasFullMix={hasFullMix}
-            revealSequenceName={revealSequence?.name ?? null}
             sourceGroups={playerSourceGroups}
             workSlug={work.slug}
           />
