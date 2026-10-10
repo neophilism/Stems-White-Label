@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { cache } from "react";
 
 import { db } from "@/lib/db";
+import { matchesManagedPlatformHost } from "@/lib/managed-host";
 
 export function normalizeHostname(value: string) {
   return value
@@ -19,7 +20,8 @@ export async function resolveTenantByHostnameDirect(hostname: string) {
     normalized === "localhost" ||
     normalized === "127.0.0.1" ||
     normalized === "::1" ||
-    normalized.endsWith(".localhost")
+    normalized.endsWith(".localhost") ||
+    matchesManagedPlatformHost(hostname, process.env.PLATFORM_DEFAULT_HOSTNAME)
   ) {
     const slug = process.env.DEFAULT_TENANT_SLUG ?? "unsealed-records";
     return db.tenant.findFirst({
