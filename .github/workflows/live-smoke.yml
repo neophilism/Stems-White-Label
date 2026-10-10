@@ -1,0 +1,29 @@
+name: Public deployment readiness
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-stems-readiness
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check deployment liveness and database readiness
+        env:
+          STEMS_SITE_URL: https://stems-white-label-preview.onrender.com
+        run: node scripts/live-smoke.mjs
