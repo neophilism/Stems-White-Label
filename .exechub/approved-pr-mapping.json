@@ -1,8 +1,8 @@
 {
   "sourceRepository": "neophilism/Stems-White-Label",
   "roadmapVersion": 1,
-  "mappingRevision": 1,
-  "note": "Source-evidenced sequential 30-slot delivery plan: docs/APPROVED-ROADMAP.md identifies PRs 1-20 as the completed original product and explicitly enumerates planned PRs 21-30. GitHub merge evidence, not these slots, controls completion. Some planned PRs may not yet exist.",
+  "mappingRevision": 2,
+  "note": "Roadmap version 1 has 30 planned work units. The first 20 PRs are explicitly documented as the original delivery, and PRs 21–23 were merged as additional delivery/readiness work. Slots 24–30 remain deliberately UNMAPPED pending a reviewed correspondence to the planned requirements; unrelated GitHub PR numbers must never imply completion of these units.",
   "pullRequestNumbers": [
     1,
     2,
@@ -27,12 +27,12 @@
     21,
     22,
     23,
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
   ]
 }
