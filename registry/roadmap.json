@@ -1,0 +1,263 @@
+{
+  "repository": "neophilism/Stems-White-Label",
+  "title": "Stems-White-Label",
+  "version": 1,
+  "planVerified": true,
+  "plannedPrCount": 30,
+  "sourceFiles": [
+    ".exechub/project.yml",
+    "docs/DEVELOPMENT_PLAN.md",
+    ".exechub/approved-pr-mapping.json"
+  ],
+  "milestones": [
+    {
+      "id": "SWL-01",
+      "title": "Platform foundation",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        1
+      ]
+    },
+    {
+      "id": "SWL-02",
+      "title": "Core music domain",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        2
+      ]
+    },
+    {
+      "id": "SWL-03",
+      "title": "Luxury storefront design system",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        3
+      ]
+    },
+    {
+      "id": "SWL-04",
+      "title": "Bespoke work showcase",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        4
+      ]
+    },
+    {
+      "id": "SWL-05",
+      "title": "Synchronized multitrack stem player",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        5
+      ]
+    },
+    {
+      "id": "SWL-06",
+      "title": "Reveal the Record",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        6
+      ]
+    },
+    {
+      "id": "SWL-07",
+      "title": "Asset storage and processing pipeline",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        7
+      ]
+    },
+    {
+      "id": "SWL-08",
+      "title": "Creator catalog CMS",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        8
+      ]
+    },
+    {
+      "id": "SWL-09",
+      "title": "Versioned licensing engine",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        9
+      ]
+    },
+    {
+      "id": "SWL-10",
+      "title": "Checkout and orders",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        10
+      ]
+    },
+    {
+      "id": "SWL-11",
+      "title": "Secure delivery and customer library",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        11
+      ]
+    },
+    {
+      "id": "SWL-12",
+      "title": "Collections and catalog navigation",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        12
+      ]
+    },
+    {
+      "id": "SWL-13",
+      "title": "White-label theme engine",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        13
+      ]
+    },
+    {
+      "id": "SWL-14",
+      "title": "Custom domains",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        14
+      ]
+    },
+    {
+      "id": "SWL-15",
+      "title": "Stripe Connect tenant commerce",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        15
+      ]
+    },
+    {
+      "id": "SWL-16",
+      "title": "SaaS billing, trials and usage limits",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        16
+      ]
+    },
+    {
+      "id": "SWL-17",
+      "title": "Tenant analytics",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        17
+      ]
+    },
+    {
+      "id": "SWL-18",
+      "title": "Platform super admin",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        18
+      ]
+    },
+    {
+      "id": "SWL-19",
+      "title": "Team accounts",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        19
+      ]
+    },
+    {
+      "id": "SWL-20",
+      "title": "Presentation and SaaS demo mode",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        20
+      ]
+    },
+    {
+      "id": "SWL-21",
+      "title": "Synchronized mute-only public stem player",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        21
+      ]
+    },
+    {
+      "id": "SWL-22",
+      "title": "Production database readiness and deployment runbook",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        22
+      ]
+    },
+    {
+      "id": "SWL-23",
+      "title": "Engine Room roadmap and live readiness monitoring",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original",
+      "pullRequests": [
+        23
+      ]
+    },
+    {
+      "id": "SWL-24",
+      "title": "Security and operations controls",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    },
+    {
+      "id": "SWL-25",
+      "title": "Deployment and worker observability",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    },
+    {
+      "id": "SWL-26",
+      "title": "Stripe commerce and end-to-end license verification",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    },
+    {
+      "id": "SWL-27",
+      "title": "Real Unsealed Records flagship catalog and creator onboarding",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    },
+    {
+      "id": "SWL-28",
+      "title": "Multi-tenant integration, accessibility and regression acceptance",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    },
+    {
+      "id": "SWL-29",
+      "title": "Provider cutover, private audio, durable workers and backups",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    },
+    {
+      "id": "SWL-30",
+      "title": "Final real customer release and paid-license download acceptance",
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "origin": "original"
+    }
+  ]
+}
