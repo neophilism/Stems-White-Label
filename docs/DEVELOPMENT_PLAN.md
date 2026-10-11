@@ -1,3 +1,5 @@
+> **Canonical PR roadmap and Engine Room tracking:** [`registry/roadmap.json`](../registry/roadmap.json). This original detailed plan is preserved; new PR mappings and planned-work totals belong in the canonical file.
+
 # Stems White Label — recovered original 20-PR plan + approved 30-PR expansion
 
 **Source:** October 7–10 original development conversations, verified GitHub PR #1–20 titles/bodies and [approved roadmap](APPROVED-ROADMAP.md). The first 20 source PRs and the amended 21–30 scope are preserved separately. Current GitHub PR **numbers** must not be treated as matching milestone IDs after #23: for example actual PR #27 is roadmap-accounting documentation, **not** the originally planned flagship-catalog milestone SWL-27. Only evidence-linked merged work counts.
