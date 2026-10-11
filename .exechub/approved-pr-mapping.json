@@ -34,5 +34,7 @@
     null,
     null,
     null
-  ]
+  ],
+  "_canonicalRoadmap": "registry/roadmap.json",
+  "_notice": "Historical reference only: edit registry/roadmap.json for PR work-count changes."
 }
