@@ -1,0 +1,108 @@
+version: 2.1
+
+# Full equivalent of .github/workflows/ci.yml, including all 16 integration suites.
+jobs:
+  full-verification:
+    docker:
+      - image: cimg/node:22.23.3
+      - image: cimg/postgres:17.11
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: stems_white_label
+    resource_class: large
+    environment:
+      CI: "true"
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/stems_white_label?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ci-only-secret
+      GITHUB_ID: ci-client
+      GITHUB_SECRET: ci-secret
+      DEFAULT_TENANT_SLUG: unsealed-records
+    steps:
+      - checkout
+      - run:
+          name: Install FFmpeg and archive tools
+          command: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
+      - run:
+          name: Install application and generate Prisma client
+          command: npm install
+      - run:
+          name: Apply actual PostgreSQL migrations
+          command: npm run db:deploy
+      - run:
+          name: Full unit suite
+          command: npm test
+      - run:
+          name: HTTP readiness check tests
+          command: node --test scripts/live-smoke.test.mjs
+      - run:
+          name: queue integration acceptance
+          command: npm run test:queue-integration
+      - run:
+          name: cms integration acceptance
+          command: npm run test:cms-integration
+      - run:
+          name: navigation integration acceptance
+          command: npm run test:navigation-integration
+      - run:
+          name: theme integration acceptance
+          command: npm run test:theme-integration
+      - run:
+          name: domains integration acceptance
+          command: npm run test:domains-integration
+      - run:
+          name: connect integration acceptance
+          command: npm run test:connect-integration
+      - run:
+          name: billing integration acceptance
+          command: npm run test:billing-integration
+      - run:
+          name: analytics integration acceptance
+          command: npm run test:analytics-integration
+      - run:
+          name: platform-admin integration acceptance
+          command: npm run test:platform-admin-integration
+      - run:
+          name: team integration acceptance
+          command: npm run test:team-integration
+      - run:
+          name: demo integration acceptance
+          command: npm run test:demo-integration
+      - run:
+          name: licensing integration acceptance
+          command: npm run test:licensing-integration
+      - run:
+          name: checkout integration acceptance
+          command: npm run test:checkout-integration
+      - run:
+          name: delivery integration acceptance
+          command: npm run test:delivery-integration
+      - run:
+          name: package integration acceptance
+          command: npm run test:package-integration
+      - run:
+          name: media integration acceptance
+          command: npm run test:media-integration
+      - run:
+          name: TypeScript verification
+          command: npm run typecheck
+      - run:
+          name: Production build
+          command: npm run build
+
+  security-status-record:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: small
+    steps:
+      - checkout
+      - run:
+          name: Validate E2EESA status record (integrity only, not certification)
+          command: python3 scripts/validate_e2eesa_status.py
+
+workflows:
+  full-ci:
+    jobs:
+      - full-verification
+      - security-status-record
