@@ -67,7 +67,7 @@ export function CheckoutSuccessClient({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   if (error) return <p className="cart-review__error">{error}</p>;
-  if (!order) return <p className="cart-review__loading">Confirming payment with Stripe…</p>;
+  if (!order) return <p className="cart-review__loading">Confirming payment with the payment provider…</p>;
 
   const paid = order.status === "PAID";
 
@@ -77,8 +77,8 @@ export function CheckoutSuccessClient({ sessionId }: { sessionId: string }) {
       <h1>{paid ? "The license record is sealed." : "Confirming the transaction."}</h1>
       <p>
         {paid
-          ? "Your order now points to the exact license versions you accepted. Secure downloads and the customer library arrive in PR 11."
-          : "The return from Stripe is not treated as proof of payment. This page waits for the verified Stripe webhook before granting licenses."}
+          ? "Your order now points to the exact license versions you accepted. Your licensed files are available in your customer library."
+          : "The return from the payment provider is not treated as proof of payment. Your licenses appear after the payment provider confirms the transaction."}
       </p>
 
       <div className="receipt__meta">

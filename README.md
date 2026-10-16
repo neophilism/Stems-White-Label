@@ -1,3 +1,6 @@
+> Current commerce implementation and limitations: [COMMERCE-GATEWAYS.md](docs/COMMERCE-GATEWAYS.md).
+> Deployment and verification status: [CURRENT_STATUS.md](docs/CURRENT_STATUS.md).
+
 # Stems White Label
 
 **Complete original/expanded development plan:** [docs/DEVELOPMENT_PLAN.md](docs/DEVELOPMENT_PLAN.md).
@@ -369,60 +372,18 @@ unchanged and queryable.
 
 ## Checkout and orders
 
-PR 10 adds a real Stripe Checkout order lifecycle around immutable
-LicenseVersion records.
+Server-side quotes bind accepted license versions, exact prices and deliverable
+snapshots to an immutable order. The hosted checkout adapter takes card details
+on the provider's site. An opaque local reference allows the buyer to return and
+view payment status, but a browser redirect never grants a license.
 
-Storefront buyers can either Buy now from one license offering or Add to cart
-and review multiple offerings together. The review screen loads current license
-versions from the server, displays their complete terms, and requires explicit
-acceptance before checkout.
+Signed notifications trigger an authenticated provider transaction lookup.
+Fulfillment checks the merchant, tenant, invoice reference, captured amount and
+currency. Event receipts and license grants commit atomically. Duplicate or late
+callbacks cannot change the buyer, re-open a refunded order, or over-refund it.
 
-Checkout does not trust prices, terms, or version numbers from the browser. The
-server re-resolves active published LicenseProducts and their current
-LicenseVersions, snapshots the legal/commercial record into OrderItem rows, and
-creates the Order before opening Stripe Checkout.
-
-To eliminate a review-to-payment race, the browser also sends the exact
-LicenseVersion IDs it reviewed. If any current version changes before the
-checkout request, the server returns a conflict and requires the buyer to review
-the new version.
-
-The order/payment domain includes:
-
-- Customer
-- Order and OrderItem
-- Payment
-- Refund
-- PurchaseLicense
-- PaymentWebhookEvent
-
-OrderItem stores immutable snapshots of price, currency, terms, rights, limits,
-Work title, license name/version, scope, and selected source-group labels.
-PurchaseLicense is granted only after a verified Stripe webhook confirms
-payment; returning from Stripe is never treated as proof of payment.
-
-Stripe webhook handling covers successful Checkout payments, asynchronous
-payment failure, PaymentIntent failure, expired Checkout sessions, and
-successful refunds. Payment fulfillment is idempotent: replaying a successful
-payment does not create duplicate PurchaseLicense grants.
-
-The checkout success page polls the local order record until the verified webhook
-has changed the order to PAID, then renders receipt/order data. Secure licensed
-downloads and the authenticated customer library are PR 11.
-
-Configuration:
-
-- STRIPE_SECRET_KEY
-- STRIPE_WEBHOOK_SECRET
-
-Known buyer email is passed to Stripe as receipt_email; when omitted, Stripe
-Checkout collects customer email itself. Stripe-hosted email receipt delivery
-also depends on the account's Stripe receipt settings.
-
-CI adds a PostgreSQL checkout integration test that validates immutable order
-snapshots, idempotent paid-order fulfillment, Customer normalization, exact
-LicenseVersion grants, partial refunds, and full refunds.
-
+See [Commerce gateways](docs/COMMERCE-GATEWAYS.md) for setup, supported fund flows,
+subscription lifecycle, migration and acceptance checks.
 
 ## Secure delivery and customer library
 
@@ -461,7 +422,7 @@ Scope selection is deterministic:
 
 A checkout is rejected if its license scope has no ready original files.
 
-After the verified Stripe payment webhook succeeds, one DownloadEntitlement is
+After the verified payment provider payment webhook succeeds, one DownloadEntitlement is
 created per frozen OrderItemAsset. Duplicate payment fulfillment remains
 idempotent and does not duplicate entitlements.
 
@@ -801,413 +762,29 @@ secure-delivery, ZIP-package, FFmpeg, TypeScript, and production-build gates
 remain enabled.
 
 
-## Stripe Connect tenant commerce
-
-PR 15 makes commerce tenant-aware through Stripe Connect while preserving the
-immutable licensing, order, and delivery guarantees built in PRs 9-11.
-
-Each tenant has one TenantCommerce record containing:
-
-- connected Stripe account ID
-- account country and default currency
-- details-submitted state
-- charges-enabled state
-- payouts-enabled state
-- current, eventual, past-due, and pending-verification requirements
-- Stripe disabled reason
-- platform fee in basis points
-- onboarding timestamps
-- last Stripe synchronization time
-
-Storefront checkout fails closed. A tenant can accept payments only when its
-connected account has completed onboarding and Stripe reports details submitted,
-charges enabled, payouts enabled, and no disabled reason.
-
-### Connect onboarding
-
-/admin/commerce is available to finance-capable tenant staff. OWNER and ADMIN
-roles can start or continue onboarding; FINANCE can review status, refresh from
-Stripe, and open the connected Express Dashboard.
-
-Connected accounts are created using Stripe's current controller configuration
-with:
-
-- Stripe-hosted Express Dashboard access
-- platform-paid Stripe fees
-- platform liability for payment losses
-- the transfers capability requested for destination-charge settlement
-
-Stripe Account Links use account_onboarding. Because Account Links are single-use,
-the configured refresh URL creates a new Account Link and immediately redirects
-the operator back into onboarding.
-
-The onboarding return page refreshes Stripe account state immediately. A separate
-Connect webhook endpoint also processes account.updated events so changes made in
-Stripe remain synchronized without requiring manual refresh.
-
-### Destination-charge settlement
-
-Checkout Sessions continue to be created on the platform Stripe account. For
-each payment, payment_intent_data contains:
-
-- transfer_data.destination = the tenant connected account
-- application_fee_amount = the tenant's configured platform fee, when non-zero
-- a transfer_group tied to the local Order
-- immutable Order/Tenant/settlement metadata
-
-This PR intentionally does not use on_behalf_of. Under this destination-charge
-configuration the platform is the business of record for the payment, while the
-connected tenant account receives the destination transfer. If a future business
-model requires the tenant to be the settlement merchant, that should be introduced
-as a separately validated Connect charge mode because Stripe capability,
-cross-border, statement-descriptor, and liability behavior changes.
-
-The platform fee is stored in basis points on TenantCommerce. New tenant commerce
-records initialize from STRIPE_PLATFORM_FEE_BPS, which defaults to zero. Tenant
-staff cannot edit this value. PR 18's platform super-admin can provide the
-operator-facing control for per-tenant fee overrides.
-
-At Checkout start, the connected account ID and computed platform-fee cents are
-snapshotted onto both Order and Payment. Later changes to platform fee settings or
-merchant configuration therefore do not rewrite historical settlement records.
-
-### Storefront behavior
-
-The cart quote endpoint exposes only a boolean checkout-readiness signal. It does
-not expose connected-account identifiers or fee configuration.
-
-If the tenant merchant is not READY, the cart displays a payment-unavailable
-message and disables the Stripe Checkout button. The server independently repeats
-the readiness check when creating the Checkout Session, so client-side state can
-never bypass merchant restrictions.
-
-### Connect webhook
-
-Configure a Stripe Connect webhook endpoint at:
-
-/api/stripe/connect/webhook
-
-and set:
-
-STRIPE_CONNECT_WEBHOOK_SECRET
-
-The endpoint currently processes account.updated and persists the Stripe
-requirements/payment/payout readiness snapshot. It shares the existing
-PaymentWebhookEvent idempotency table, so duplicate Connect events are harmless.
-
-The normal platform payment webhook remains:
-
-/api/stripe/webhook
-
-with STRIPE_WEBHOOK_SECRET.
-
-### Configuration
-
-- STRIPE_SECRET_KEY
-- STRIPE_WEBHOOK_SECRET
-- STRIPE_CONNECT_WEBHOOK_SECRET
-- STRIPE_CONNECT_DEFAULT_COUNTRY (default US)
-- STRIPE_PLATFORM_FEE_BPS (default 0)
-
-The country supplied when a connected account is first created must be a
-two-letter ISO-style country code. It is not changed after the Stripe account
-exists.
-
-### Refund operational note
-
-Destination charges move funds to the connected account. Refund and transfer
-reversal are separate settlement concerns in Stripe. Existing local refund
-records continue to track customer refunds and revoke fully refunded licenses,
-but operators must ensure any Stripe-side refund also reconciles the connected
-transfer and application fee as appropriate. A platform-native refund/reversal
-console can be added alongside later finance operations rather than silently
-changing PR 10's refund semantics.
-
-### Validation
-
-CI adds unit coverage for:
-
-- basis-point validation
-- cent rounding
-- country normalization
-- merchant readiness state
-
-A PostgreSQL Stripe Connect integration test proves:
-
-- onboarding-state persistence
-- transition to READY
-- platform-fee checkout calculation
-- connected-account uniqueness across tenants
-- restricted accounts remain checkout-blocked
-
-The existing checkout integration now also proves connected-account ID and
-platform-fee cents are snapshotted on both Order and Payment.
-
-All earlier migrations, unit tests, queue, CMS, navigation, theme, custom-domain,
-licensing, checkout, delivery, ZIP-package, FFmpeg, TypeScript, and production
-build gates remain enabled.
-
-
-## SaaS billing, trials, and usage limits
-
-PR 16 adds the platform subscription layer. This is deliberately separate from
-the Stripe Connect merchant account in PR 15:
-
-- Stripe Connect represents the tenant as a seller receiving proceeds from
-  source-license purchases.
-- Stripe Billing represents the tenant as a customer paying for this SaaS
-  platform.
-
-A tenant can therefore have both a connected merchant account and a platform
-Billing Customer without the identifiers or settlement flows being mixed.
-
-### Deployment-safe grandfathering
-
-Every Tenant that exists when the PR 16 migration runs receives a
-GRANDFATHERED TenantSubscription with unlimited numeric quotas and access to
-custom domains and white-label theming.
-
-This prevents a production deployment from suddenly disabling existing tenants
-because Stripe Billing has not yet been configured.
-
-Fresh database installs also seed Unsealed Records as GRANDFATHERED. New tenants
-created after PR 16 do not automatically receive a grandfathered row:
-ensureTenantSubscription creates them as UNSUBSCRIBED until they choose a plan.
-
-### Stripe plan catalog
-
-Plan names and prices are not hard-coded in the application.
-
-STRIPE_BILLING_PRICE_IDS is a comma-separated allowlist of recurring Stripe Price
-IDs that can be sold from /admin/billing. Each Price must have an expanded active
-Stripe Product and a fixed unit amount.
-
-Plan entitlements are read from Product metadata. Price metadata can override the
-same key for a specific billing interval or price.
-
-Required metadata:
-
-- stems_plan_key
-- stems_max_works
-- stems_max_storage_bytes
-- stems_max_custom_domains
-- stems_max_members
-- stems_allow_custom_domains
-- stems_allow_white_label
-
-Numeric limits must be a non-negative integer or the literal value unlimited.
-
-Optional metadata:
-
-- stems_trial_days: integer from 0 through 365; defaults to 0
-- stems_features: comma-separated display labels used by the billing UI
-
-Example Product metadata:
-
-stems_plan_key=studio
-stems_max_works=100
-stems_max_storage_bytes=536870912000
-stems_max_custom_domains=5
-stems_max_members=10
-stems_allow_custom_domains=true
-stems_allow_white_label=true
-stems_trial_days=14
-stems_features=Private originals,Custom domains,Team access
-
-Removing a Price ID from STRIPE_BILLING_PRICE_IDS prevents new subscriptions to
-that price. Existing subscriptions using an archived or no-longer-public Price
-remain syncable so cancellation, payment failure, and historical entitlements do
-not break when a plan is retired.
-
-### Subscription Checkout
-
-An OWNER or ADMIN starts a new subscription from /admin/billing.
-
-The application creates or reuses a dedicated platform Stripe Customer for the
-tenant, then opens a Stripe Checkout Session in subscription mode with:
-
-- one allowlisted recurring Price
-- client_reference_id = tenant ID
-- tenant and billing Price metadata on both Checkout and Subscription
-- the plan's configured trial_period_days, when greater than zero
-
-The local subscription is not considered active merely because the browser
-returns from Checkout. Access changes only after signed Stripe Billing webhook
-events synchronize the Subscription.
-
-### Customer portal, upgrades, and downgrades
-
-Existing subscribers use a Stripe Billing customer portal session created by the
-server. Configure the Stripe portal on the platform account, not on any connected
-merchant account.
-
-To allow upgrades or downgrades, the Stripe customer portal configuration must
-include the Products and Prices customers are permitted to switch between.
-
-STRIPE_BILLING_PORTAL_CONFIGURATION_ID is optional. When set, the application
-launches that specific portal configuration. Otherwise Stripe's default portal
-configuration is used.
-
-Plan changes made in the portal are authoritative only after Stripe sends
-customer.subscription.updated. The app then snapshots the new Price and
-entitlements onto TenantSubscription.
-
-### Subscription status and access
-
-TenantSubscription mirrors the relevant Stripe lifecycle states:
-
-- UNSUBSCRIBED
-- TRIALING
-- ACTIVE
-- PAST_DUE
-- CANCELED
-- UNPAID
-- INCOMPLETE
-- INCOMPLETE_EXPIRED
-- PAUSED
-- GRANDFATHERED
-
-TRIALING, ACTIVE, and GRANDFATHERED allow new billable resource creation.
-
-PAST_DUE receives a bounded grace period controlled by
-SAAS_PAST_DUE_GRACE_DAYS, default 7 and capped at 30. During the grace window,
-resource creation remains available. After the grace period, new billable
-consumption is blocked until Stripe reports a restored active state.
-
-Existing public storefront content remains online when billing is inactive. PR 16
-does not delete Works, revoke customers' purchased licenses, disable downloads,
-or take a tenant's public catalog offline because the SaaS bill is late.
-
-### Snapshotted entitlements
-
-Every synchronized subscription stores the exact plan state locally:
-
-- Price ID
-- Product ID
-- plan key and display name
-- currency and unit amount
-- billing interval and interval count
-- trial and billing-period dates
-- cancel-at-period-end state
-- maximum Works
-- maximum storage bytes
-- maximum custom domains
-- maximum team members
-- custom-domain entitlement
-- white-label entitlement
-- feature labels
-
-Later edits to Stripe Product metadata do not retroactively change a tenant until
-a Stripe subscription synchronization occurs.
-
-### Usage accounting and enforcement
-
-/admin/billing shows current consumption against the snapshotted plan.
-
-Usage currently includes:
-
-Works
-: non-ARCHIVED Works.
-
-Storage
-: tracked AudioAsset bytes, ArtworkAsset bytes, ThemeAsset bytes, and generated
-  DownloadPackage bytes.
-
-Custom domains
-: tenant-created domain claims. Managed platform/local development hostnames are
-  excluded.
-
-Team members
-: TenantMembership rows. PR 19's invitation flow can call the already implemented
-  assertTenantCanAddMember gate before adding members.
-
-Enforcement is integrated into:
-
-- new Work creation
-- source/master/stem upload intents
-- artwork upload intents
-- logo/favicon upload intents
-- white-label theme changes
-- custom-domain registration
-
-If a tenant changes to a lower plan while current usage exceeds a new limit,
-existing data is preserved and remains readable. New creation for that constrained
-resource is blocked until usage returns within the plan or the plan is upgraded.
-
-### Stripe Billing webhook
-
-Configure a separate Stripe event destination at:
-
-/api/stripe/billing/webhook
-
-with:
-
-STRIPE_BILLING_WEBHOOK_SECRET
-
-The Billing endpoint handles:
-
-- checkout.session.completed when mode=subscription
-- customer.subscription.created
-- customer.subscription.updated
-- customer.subscription.deleted
-
-Subscription webhooks are the authority for trials, upgrades, downgrades,
-cancellation, and payment-status access changes.
-
-### Scoped webhook idempotency
-
-PR 16 introduces StripeWebhookEvent with an explicit scope:
-
-- PAYMENTS
-- CONNECT
-- BILLING
-
-The scope is part of the unique key with Stripe event ID.
-
-This replaces the active use of the older PaymentWebhookEvent ledger and prevents
-a Stripe event delivered to more than one configured endpoint from causing one
-subsystem to suppress processing in another. The payment, Connect, and Billing
-webhook endpoints now use separate idempotency scopes.
-
-### Configuration
-
-- STRIPE_SECRET_KEY
-- STRIPE_BILLING_WEBHOOK_SECRET
-- STRIPE_BILLING_PRICE_IDS
-- STRIPE_BILLING_PORTAL_CONFIGURATION_ID (optional)
-- SAAS_PAST_DUE_GRACE_DAYS (default 7)
-
-STRIPE_SECRET_KEY remains the platform Stripe account key. SaaS Billing sessions
-and portal sessions are not created on tenant Connect accounts.
-
-### Validation
-
-CI adds unit tests for:
-
-- Price allowlist normalization
-- active/trialing/grandfathered access
-- past-due grace behavior
-- fail-closed inactive statuses
-
-A PostgreSQL SaaS-billing integration test proves:
-
-- new tenants begin UNSUBSCRIBED
-- unsubscribed tenants cannot create billable resources
-- Work limits are enforced
-- storage accounting and limits are enforced
-- custom-domain limits are enforced
-- white-label and custom-domain feature entitlements are enforced
-- past-due access works only inside the grace period
-- Stripe webhook IDs are isolated by PAYMENTS vs BILLING scope
-
-The pre-existing custom-domain integration test now provisions an active domain
-entitlement explicitly, so it continues to validate the domain subsystem under
-the new SaaS gate.
-
-All prior migrations, unit tests, asset queue, CMS, navigation, themes, custom
-domains, Stripe Connect, licensing, checkout/orders, secure delivery, ZIP
-packages, FFmpeg/media, TypeScript, and production-build gates remain enabled.
-
+## Merchant commerce and SaaS billing
+
+The active integration is provider-neutral commerce with an Authorize.net hosted
+checkout adapter. Each tenant has an independently configured merchant account.
+SaaS subscriptions use a separate billing merchant, hosted customer profiles and
+recurring schedules. The provider stores payment methods; this application does
+not accept or store card details.
+
+The current adapter uses direct merchant settlement. Nonzero marketplace split
+fees pause checkout until a split-capable provider is implemented and approved.
+The platform does not claim to initiate payouts for an acquirer that exposes no
+payout API. Operator-approved configuration and verified provider authentication
+are distinct from a completed real transaction test.
+
+Plans, entitlements, usage quotas, trial expiry and past-due grace are controlled
+by server-side configuration and persisted subscription snapshots. A recurring
+schedule's existence cannot activate paid access; a verified payment does.
+Uncertain provisioning requests remain claimed until reconciled to prevent
+retries creating duplicate customers or subscriptions.
+
+[Commerce setup and cutover](docs/COMMERCE-GATEWAYS.md) is authoritative for
+credentials, webhook endpoints and recovery. Prior migrations remain immutable
+so existing databases can upgrade without erasing their historical records.
 
 ## Tenant analytics
 
@@ -1266,12 +843,12 @@ Clients cannot submit CHECKOUT_STARTED or PURCHASE_COMPLETED.
 ### Authoritative commerce events
 
 CHECKOUT_STARTED is written by the Checkout Session creation route only after
-Stripe returns a real Checkout URL and the local Order has been moved to
+payment provider returns a real Checkout URL and the local Order has been moved to
 CHECKOUT_CREATED.
 
 The current first-party analytics session is attached when available.
 
-PURCHASE_COMPLETED is written after the signed Stripe payment webhook has
+PURCHASE_COMPLETED is written after the signed payment provider payment webhook has
 successfully fulfilled the Order. The event is idempotent by Order.
 
 Analytics writes are intentionally non-blocking in both commerce paths. An
@@ -1325,8 +902,8 @@ For each currency the dashboard shows:
 - net customer revenue after recorded refunds
 - paid order count
 
-Net customer revenue intentionally does not claim to be Stripe payout proceeds.
-It is before Stripe processing fees and before any Connect transfer or
+Net customer revenue intentionally does not claim to be payment provider payout proceeds.
+It is before payment provider processing fees and before any Connect transfer or
 application-fee reconciliation that may occur separately.
 
 ### Reporting windows
@@ -1407,7 +984,7 @@ Payment, and engagement events. It proves:
 - top source-group mute and solo rankings
 - daily aggregation
 
-All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe
+All previous migration, unit, queue, CMS, navigation, theme, domain, payment provider
 Connect, SaaS billing, licensing, Checkout, delivery, package, media, TypeScript,
 and production-build gates remain enabled.
 
@@ -1446,7 +1023,7 @@ The platform overview shows:
 - SaaS subscription status distribution
 - tracked application storage
 - domain verification/readiness
-- Stripe Connect readiness
+- merchant payments readiness
 - audio processing-job status
 - ZIP-package job status
 - recent processing/package failures
@@ -1517,7 +1094,7 @@ future provider telemetry integration is added.
 - tenant status
 - Work/storage/domain/member usage
 - SaaS subscription and entitlements
-- Stripe Connect state
+- merchant payments state
 - platform fee
 - domains with ownership/routing/TLS status
 - tenant memberships
@@ -1557,7 +1134,7 @@ deleting:
 - PurchaseLicenses
 - DownloadEntitlements
 - SaaS subscription history
-- Stripe Connect state
+- merchant payments state
 - domains
 - platform audit records
 
@@ -1682,7 +1259,7 @@ The integration database is ephemeral. Test actors and tenants referenced by
 audit rows are intentionally not deleted because audit foreign keys are
 retention-protecting RESTRICT references.
 
-All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe
+All previous migration, unit, queue, CMS, navigation, theme, domain, payment provider
 Connect, SaaS billing, analytics, licensing, Checkout, delivery, package, media,
 TypeScript, and production-build gates remain enabled.
 
@@ -1734,7 +1311,7 @@ CI adds unit coverage for email normalization, role validation, owner-role prote
 
 A PostgreSQL team-account integration test proves invitation creation, seat-limit reservation, cross-tenant rejection, acceptance, role changes, immediate revocation, last-owner protection, expected audit actions, and database rejection of audit UPDATE/DELETE.
 
-All previous migration, unit, queue, CMS, navigation, theme, domain, Stripe Connect, SaaS billing, analytics, platform-admin, licensing, Checkout, delivery, package, media, TypeScript, and production-build gates remain enabled.
+All previous migration, unit, queue, CMS, navigation, theme, domain, merchant payments, SaaS billing, analytics, platform-admin, licensing, Checkout, delivery, package, media, TypeScript, and production-build gates remain enabled.
 
 ## Presentation and SaaS demo mode
 
@@ -1772,7 +1349,7 @@ It demonstrates:
 - clean Studio, Label, and House SaaS pricing presentation
 
 Displayed pricing is presentation copy only. Actual production SaaS entitlements
-and billing remain authoritative from the Stripe Billing configuration implemented
+and billing remain authoritative from the subscription billing configuration implemented
 in PR 16.
 
 ### Safe demo behavior

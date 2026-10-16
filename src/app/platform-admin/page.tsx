@@ -37,14 +37,14 @@ function money(cents: bigint, currency: string) {
 }
 
 function commerceReady(commerce: {
-  stripeAccountId: string | null;
+  providerAccountId: string | null;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   detailsSubmitted: boolean;
   disabledReason: string | null;
 } | null) {
   return Boolean(
-    commerce?.stripeAccountId &&
+    commerce?.providerAccountId &&
       commerce.chargesEnabled &&
       commerce.payoutsEnabled &&
       commerce.detailsSubmitted &&
@@ -225,7 +225,7 @@ export default async function PlatformAdminPage() {
                   <td>
                     {commerceReady(tenant.commerce)
                       ? "Ready"
-                      : tenant.commerce?.stripeAccountId
+                      : tenant.commerce?.providerAccountId
                         ? "Restricted"
                         : "Not connected"}
                   </td>

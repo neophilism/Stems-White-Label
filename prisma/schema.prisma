@@ -96,7 +96,9 @@ enum OrderStatus {
 }
 
 enum PaymentProvider {
-  STRIPE
+  LEGACY
+  AUTHORIZE_NET
+  SANDBOX
 }
 
 enum PaymentStatus {
@@ -188,7 +190,7 @@ enum DomainTlsStatus {
   FAILED
 }
 
-enum StripeWebhookScope {
+enum CommerceWebhookScope {
   PAYMENTS
   CONNECT
   BILLING
@@ -280,6 +282,7 @@ model VerificationToken {
 }
 
 model Tenant {
+  hostedCheckouts HostedCheckout[]
   id           String             @id @default(cuid())
   name         String
   slug         String             @unique
@@ -708,7 +711,7 @@ model Customer {
   email            String
   normalizedEmail  String
   name             String?
-  stripeCustomerId String?
+  providerCustomerId String?
   tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   orders           Order[]
@@ -717,13 +720,14 @@ model Customer {
   updatedAt        DateTime @updatedAt
 
   @@unique([tenantId, normalizedEmail])
-  @@unique([tenantId, stripeCustomerId])
+  @@unique([tenantId, providerCustomerId])
   @@unique([tenantId, userId])
   @@index([tenantId, createdAt])
   @@index([userId])
 }
 
 model Order {
+  hostedCheckout HostedCheckout?
   id                      String      @id @default(cuid())
   tenantId                String
   customerId              String?
@@ -733,9 +737,9 @@ model Order {
   totalCents              Int
   buyerEmail              String?
   termsAcceptedAt         DateTime
-  stripeCheckoutSessionId String?     @unique
-  stripePaymentIntentId   String?     @unique
-  stripeConnectedAccountId String?
+  providerCheckoutSessionId String?     @unique
+  providerTransactionId   String?
+  providerAccountId String?
   platformFeeCents        Int         @default(0)
   paidAt                  DateTime?
   failedAt                DateTime?
@@ -752,6 +756,7 @@ model Order {
 
   @@index([tenantId, status, createdAt])
   @@index([customerId, createdAt])
+  @@unique([providerAccountId, providerTransactionId])
 }
 
 model OrderItem {
@@ -791,10 +796,10 @@ model Payment {
   id                String          @id @default(cuid())
   tenantId          String
   orderId           String
-  provider          PaymentProvider @default(STRIPE)
+  provider          PaymentProvider @default(LEGACY)
   status            PaymentStatus   @default(PENDING)
   providerPaymentId String?
-  stripeConnectedAccountId String?
+  providerAccountId String?
   platformFeeCents  Int             @default(0)
   amountCents       Int
   currency          String
@@ -807,7 +812,7 @@ model Payment {
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 
-  @@unique([provider, providerPaymentId])
+  @@unique([provider, providerAccountId, providerPaymentId])
   @@index([tenantId, status, createdAt])
   @@index([orderId])
 }
@@ -815,7 +820,9 @@ model Payment {
 model Refund {
   id               String        @id @default(cuid())
   paymentId        String
-  providerRefundId String        @unique
+  providerRefundId String
+  provider PaymentProvider @default(LEGACY)
+  accountId String @default("legacy")
   amountCents      Int
   status           PaymentStatus
   reason           String?
@@ -823,6 +830,7 @@ model Refund {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
+  @@unique([provider, accountId, providerRefundId])
   @@index([paymentId, createdAt])
 }
 
@@ -982,9 +990,10 @@ model ThemeAsset {
 
 
 model TenantCommerce {
+  provider PaymentProvider @default(LEGACY)
   id                              String   @id @default(cuid())
   tenantId                        String   @unique
-  stripeAccountId                 String?  @unique
+  providerAccountId                 String?  @unique
   country                         String?
   defaultCurrency                 String?
   chargesEnabled                  Boolean  @default(false)
@@ -1009,14 +1018,17 @@ model TenantCommerce {
 
 
 model TenantSubscription {
+  provider PaymentProvider @default(LEGACY)
+  provisioningState String @default("IDLE")
+  providerAccountId String?
   id                      String                 @id @default(cuid())
   tenantId                String                 @unique
   status                  SaasSubscriptionStatus @default(UNSUBSCRIBED)
-  stripeCustomerId        String?                @unique
-  stripeSubscriptionId    String?                @unique
-  stripeCheckoutSessionId String?
-  stripePriceId           String?
-  stripeProductId         String?
+  providerCustomerId        String?                @unique
+  providerSubscriptionId    String?                @unique
+  providerCheckoutSessionId String?
+  providerPriceId           String?
+  providerProductId         String?
   planKey                 String?
   planName                String?
   currency                String?
@@ -1044,19 +1056,22 @@ model TenantSubscription {
   updatedAt                DateTime               @updatedAt
 
   @@index([status, currentPeriodEnd])
-  @@index([stripePriceId])
+  @@index([providerPriceId])
 }
 
 
-model StripeWebhookEvent {
+model CommerceWebhookEvent {
+  provider PaymentProvider @default(LEGACY)
+  accountId String @default("legacy")
+  payloadHash String?
   id              String             @id @default(cuid())
-  scope           StripeWebhookScope
+  scope           CommerceWebhookScope
   providerEventId String
   eventType       String
   processedAt     DateTime           @default(now())
   createdAt       DateTime           @default(now())
 
-  @@unique([scope, providerEventId])
+  @@unique([provider, accountId, scope, providerEventId])
   @@index([scope, processedAt])
 }
 
@@ -1119,4 +1134,25 @@ model PlatformAuditLog {
   @@index([actorUserId, createdAt])
   @@index([tenantId, createdAt])
   @@index([targetType, targetId, createdAt])
+}
+
+// Short-lived opaque references; only hosted provider tokens, never card details.
+model HostedCheckout {
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id String @id
+  tenantId String
+  orderId String? @unique
+  kind String
+  provider PaymentProvider
+  accountId String
+  reference String @unique
+  token String @db.Text
+  actionUrl String
+  planId String?
+  providerCustomerId String?
+  expiresAt DateTime
+  completedAt DateTime?
+  createdAt DateTime @default(now())
+  @@index([tenantId, kind, expiresAt])
 }

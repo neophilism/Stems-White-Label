@@ -80,12 +80,12 @@ export const DEMO_FEATURES = [
   {
     eyebrow: "03 · Commerce",
     title: "Licensing with frozen legal history",
-    body: "Versioned terms, Stripe Checkout, immutable order snapshots, secure delivery, and a persistent customer library form one controlled commerce path.",
+    body: "Versioned terms, secure checkout, immutable order snapshots, secure delivery, and a persistent customer library form one controlled commerce path.",
   },
   {
     eyebrow: "04 · White label",
     title: "One engine, distinct artist identities",
-    body: "Themes, domains, tenant roles, Stripe Connect, SaaS billing, analytics, and operator controls let the platform serve many branded storefronts.",
+    body: "Themes, domains, tenant roles, Merchant payments, SaaS billing, analytics, and operator controls let the platform serve many branded storefronts.",
   },
 ] as const;
 

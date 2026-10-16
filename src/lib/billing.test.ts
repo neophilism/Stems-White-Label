@@ -7,13 +7,13 @@ import {
 } from "./billing";
 
 test("billing price allowlist removes duplicates and blanks", () => {
-  const previous = process.env.STRIPE_BILLING_PRICE_IDS;
-  process.env.STRIPE_BILLING_PRICE_IDS = "price_a, price_b,price_a,,";
+  const previous = process.env.SAAS_BILLING_PRICE_IDS;
+  process.env.SAAS_BILLING_PRICE_IDS = "price_a, price_b,price_a,,";
   try {
     assert.deepEqual(allowedBillingPriceIds(), ["price_a", "price_b"]);
   } finally {
-    if (previous === undefined) delete process.env.STRIPE_BILLING_PRICE_IDS;
-    else process.env.STRIPE_BILLING_PRICE_IDS = previous;
+    if (previous === undefined) delete process.env.SAAS_BILLING_PRICE_IDS;
+    else process.env.SAAS_BILLING_PRICE_IDS = previous;
   }
 });
 

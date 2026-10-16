@@ -1,7 +1,5 @@
-import type Stripe from "stripe";
 
 import { db } from "@/lib/db";
-import { getStripe } from "@/lib/stripe";
 
 export type BillingPlan = {
   priceId: string;
@@ -36,6 +34,8 @@ type SubscriptionEntitlements = Pick<
 type SubscriptionLike = {
   status: string;
   pastDueGraceUntil: Date | null;
+  trialEnd?: Date | null;
+  currentPeriodEnd?: Date | null;
 };
 
 function csv(value: string | undefined) {
@@ -46,170 +46,52 @@ function csv(value: string | undefined) {
 }
 
 export function allowedBillingPriceIds() {
-  return [...new Set(csv(process.env.STRIPE_BILLING_PRICE_IDS))];
+  return [...new Set(csv(process.env.SAAS_BILLING_PRICE_IDS))];
 }
 
-function metadataValue(
-  metadata: Record<string, string>,
-  key: string,
-) {
-  const value = metadata[key]?.trim();
-  if (!value) throw new Error("Billing product is missing metadata " + key + ".");
-  return value;
-}
-
-function metadataLimit(
-  metadata: Record<string, string>,
-  key: string,
-  bigint = false,
-) {
-  const raw = metadataValue(metadata, key).toLowerCase();
-  if (raw === "unlimited") return null;
-
-  if (!/^\d+$/.test(raw)) {
-    throw new Error(key + " must be a non-negative integer or unlimited.");
+// Plans are an operator-owned allowlist, independent of any processor's product API.
+export function parseBillingPlan(value: unknown): BillingPlan {
+  if (!value || typeof value !== "object") throw new Error("Invalid billing plan.");
+  const p = value as Record<string, unknown>;
+  for (const key of ["priceId", "productId", "key", "name"]) {
+    if (typeof p[key] !== "string" || !p[key]) throw new Error("Billing plan is missing " + key + ".");
   }
-
-  if (bigint) return BigInt(raw);
-
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value)) {
-    throw new Error(key + " exceeds the supported integer range.");
+  if (!/^[A-Z]{3}$/.test(String(p.currency)) || !["day", "week", "month", "year"].includes(String(p.interval))) throw new Error("Invalid plan currency or interval.");
+  for (const key of ["unitAmountCents", "intervalCount", "trialDays"]) {
+    if (!Number.isSafeInteger(p[key]) || Number(p[key]) < (key === "trialDays" ? 0 : 1)) throw new Error("Invalid billing plan " + key + ".");
   }
-  return value;
-}
-
-function metadataBoolean(
-  metadata: Record<string, string>,
-  key: string,
-) {
-  const raw = metadataValue(metadata, key).toLowerCase();
-  if (raw !== "true" && raw !== "false") {
-    throw new Error(key + " must be true or false.");
+  if (Number(p.trialDays) > 365) throw new Error("Trial must be at most 365 days.");
+  for (const key of ["maxWorks", "maxCustomDomains", "maxMembers"]) {
+    if (p[key] !== null && (!Number.isSafeInteger(p[key]) || Number(p[key]) < 0)) throw new Error("Invalid plan limit " + key + ".");
   }
-  return raw === "true";
-}
-
-function metadataTrialDays(metadata: Record<string, string>) {
-  const raw = metadata["stems_trial_days"]?.trim() ?? "0";
-  if (!/^\d+$/.test(raw)) {
-    throw new Error("stems_trial_days must be a non-negative integer.");
-  }
-  const days = Number(raw);
-  if (!Number.isSafeInteger(days) || days > 365) {
-    throw new Error("stems_trial_days must be from 0 to 365.");
-  }
-  return days;
-}
-
-export function parseBillingPlan(
-  price: Stripe.Price,
-  options: { requireActive?: boolean } = {},
-): BillingPlan {
-  const requireActive = options.requireActive !== false;
-  if (
-    price.type !== "recurring" ||
-    !price.recurring ||
-    (requireActive && !price.active)
-  ) {
-    throw new Error(
-      requireActive
-        ? "Configured SaaS price must be an active recurring Stripe Price."
-        : "Subscription price must be recurring.",
-    );
-  }
-  if (price.unit_amount == null || price.unit_amount < 0) {
-    throw new Error("Configured SaaS price must use a fixed unit amount.");
-  }
-  if (typeof price.product === "string" || !("name" in price.product)) {
-    throw new Error("Stripe Price product must be expanded.");
-  }
-
-  const product = price.product as Stripe.Product;
-  if (requireActive && !product.active) {
-    throw new Error("Configured SaaS product is inactive.");
-  }
-
-  const metadata = {
-    ...product.metadata,
-    ...price.metadata,
-  };
-  const features = csv(metadata["stems_features"]);
-
-  return {
-    priceId: price.id,
-    productId: product.id,
-    key: metadataValue(metadata, "stems_plan_key"),
-    name: product.name,
-    description: product.description ?? null,
-    currency: price.currency.toUpperCase(),
-    unitAmountCents: price.unit_amount,
-    interval: price.recurring.interval,
-    intervalCount: price.recurring.interval_count,
-    trialDays: metadataTrialDays(metadata),
-    maxWorks: metadataLimit(metadata, "stems_max_works") as number | null,
-    maxStorageBytes: metadataLimit(
-      metadata,
-      "stems_max_storage_bytes",
-      true,
-    ) as bigint | null,
-    maxCustomDomains: metadataLimit(
-      metadata,
-      "stems_max_custom_domains",
-    ) as number | null,
-    maxMembers: metadataLimit(
-      metadata,
-      "stems_max_members",
-    ) as number | null,
-    allowCustomDomains: metadataBoolean(
-      metadata,
-      "stems_allow_custom_domains",
-    ),
-    allowWhiteLabel: metadataBoolean(metadata, "stems_allow_white_label"),
-    features,
-  };
-}
-
-async function retrieveBillingPlan(
-  priceId: string,
-  options: { requireActive?: boolean } = {},
-) {
-  const price = await getStripe().prices.retrieve(priceId, {
-    expand: ["product"],
-  });
-  return parseBillingPlan(price, options);
+  if (![true, false].includes(p.allowCustomDomains as boolean) || ![true, false].includes(p.allowWhiteLabel as boolean) ||
+      !Array.isArray(p.features) || p.features.some(f => typeof f !== "string")) throw new Error("Invalid plan entitlements.");
+  const storage = p.maxStorageBytes === null ? null : String(p.maxStorageBytes);
+  if (storage !== null && !/^\d+$/.test(storage)) throw new Error("Invalid storage limit.");
+  return { ...p, description: typeof p.description === "string" ? p.description : null,
+    maxStorageBytes: storage === null ? null : BigInt(storage) } as BillingPlan;
 }
 
 export async function getBillingPlan(priceId: string) {
-  const allowed = allowedBillingPriceIds();
-  if (!allowed.includes(priceId)) {
-    throw new Error("That SaaS billing plan is not available.");
-  }
-  return retrieveBillingPlan(priceId);
+  if (!allowedBillingPriceIds().includes(priceId)) throw new Error("That SaaS billing plan is not available.");
+  const plans: unknown = JSON.parse(process.env.SAAS_BILLING_PLANS_JSON || "[]");
+  if (!Array.isArray(plans)) throw new Error("Invalid billing plan configuration.");
+  const plan = plans.map(parseBillingPlan).find(plan => plan.priceId === priceId);
+  if (!plan) throw new Error("That SaaS billing plan is not configured.");
+  return plan;
 }
 
 export async function listBillingPlans() {
-  const ids = allowedBillingPriceIds();
-  const plans = await Promise.all(ids.map((id) => getBillingPlan(id)));
-  return plans;
+  return Promise.all(allowedBillingPriceIds().map(getBillingPlan));
 }
 
-export function mapStripeSubscriptionStatus(
-  status: Stripe.Subscription.Status,
-) {
-  return status.toUpperCase() as
-    | "TRIALING"
-    | "ACTIVE"
-    | "PAST_DUE"
-    | "CANCELED"
-    | "UNPAID"
-    | "INCOMPLETE"
-    | "INCOMPLETE_EXPIRED"
-    | "PAUSED";
-}
-
-function dateFromUnix(value: number | null | undefined) {
-  return value == null ? null : new Date(value * 1000);
+export function mapProviderSubscriptionStatus(status: string) {
+  const map: Record<string, "ACTIVE" | "PAST_DUE" | "CANCELED" | "UNPAID" | "INCOMPLETE" | "INCOMPLETE_EXPIRED" | "PAUSED" | "TRIALING"> = {
+    active: "ACTIVE", suspended: "PAST_DUE", canceled: "CANCELED", expired: "CANCELED", terminated: "UNPAID",
+  };
+  const mapped = map[status];
+  if (!mapped) throw new Error("Unknown provider subscription status.");
+  return mapped;
 }
 
 function pastDueGraceDays() {
@@ -231,6 +113,10 @@ export function subscriptionAccessState(
     return { allowed: false, reason: "A SaaS subscription is required." };
   }
 
+  if ((subscription.status === "TRIALING" && subscription.trialEnd && subscription.trialEnd <= now) ||
+      (subscription.status === "ACTIVE" && subscription.currentPeriodEnd && subscription.currentPeriodEnd <= now)) {
+    return { allowed: false, reason: "Subscription period has ended; payment confirmation is pending." };
+  }
   if (
     subscription.status === "GRANDFATHERED" ||
     subscription.status === "ACTIVE" ||
@@ -269,9 +155,10 @@ export async function ensureTenantSubscription(tenantId: string) {
 
 export async function persistSubscriptionSnapshot(input: {
   tenantId: string;
-  stripeCustomerId: string;
-  stripeSubscriptionId: string;
-  status: ReturnType<typeof mapStripeSubscriptionStatus>;
+  provider?: "AUTHORIZE_NET" | "SANDBOX";
+  providerCustomerId: string;
+  providerSubscriptionId: string;
+  status: ReturnType<typeof mapProviderSubscriptionStatus>;
   plan: BillingPlan;
   cancelAtPeriodEnd: boolean;
   trialStart: Date | null;
@@ -286,11 +173,11 @@ export async function persistSubscriptionSnapshot(input: {
   });
 
   if (
-    existing?.stripeSubscriptionId &&
-    existing.stripeSubscriptionId !== input.stripeSubscriptionId &&
+    existing?.providerSubscriptionId &&
+    existing.providerSubscriptionId !== input.providerSubscriptionId &&
     !["CANCELED", "INCOMPLETE_EXPIRED"].includes(existing.status)
   ) {
-    throw new Error("Tenant already has a different active Stripe subscription.");
+    throw new Error("Tenant already has a different active provider subscription.");
   }
 
   const now = new Date();
@@ -306,10 +193,11 @@ export async function persistSubscriptionSnapshot(input: {
     create: {
       tenantId: input.tenantId,
       status: input.status,
-      stripeCustomerId: input.stripeCustomerId,
-      stripeSubscriptionId: input.stripeSubscriptionId,
-      stripePriceId: input.plan.priceId,
-      stripeProductId: input.plan.productId,
+      provider: input.provider ?? "AUTHORIZE_NET",
+      providerCustomerId: input.providerCustomerId,
+      providerSubscriptionId: input.providerSubscriptionId,
+      providerPriceId: input.plan.priceId,
+      providerProductId: input.plan.productId,
       planKey: input.plan.key,
       planName: input.plan.name,
       currency: input.plan.currency,
@@ -335,10 +223,11 @@ export async function persistSubscriptionSnapshot(input: {
     },
     update: {
       status: input.status,
-      stripeCustomerId: input.stripeCustomerId,
-      stripeSubscriptionId: input.stripeSubscriptionId,
-      stripePriceId: input.plan.priceId,
-      stripeProductId: input.plan.productId,
+      provider: input.provider ?? "AUTHORIZE_NET",
+      providerCustomerId: input.providerCustomerId,
+      providerSubscriptionId: input.providerSubscriptionId,
+      providerPriceId: input.plan.priceId,
+      providerProductId: input.plan.productId,
       planKey: input.plan.key,
       planName: input.plan.name,
       currency: input.plan.currency,
@@ -362,37 +251,6 @@ export async function persistSubscriptionSnapshot(input: {
       entitlements: { features: input.plan.features },
       lastSyncedAt: now,
     },
-  });
-}
-
-export async function syncStripeSubscription(
-  tenantId: string,
-  subscription: Stripe.Subscription,
-) {
-  const item = subscription.items.data[0];
-  if (!item) throw new Error("Stripe subscription has no subscription item.");
-
-  const plan = await retrieveBillingPlan(item.price.id, {
-    requireActive: false,
-  });
-  const customerId =
-    typeof subscription.customer === "string"
-      ? subscription.customer
-      : subscription.customer.id;
-
-  return persistSubscriptionSnapshot({
-    tenantId,
-    stripeCustomerId: customerId,
-    stripeSubscriptionId: subscription.id,
-    status: mapStripeSubscriptionStatus(subscription.status),
-    plan,
-    cancelAtPeriodEnd: subscription.cancel_at_period_end,
-    trialStart: dateFromUnix(subscription.trial_start),
-    trialEnd: dateFromUnix(subscription.trial_end),
-    currentPeriodStart: dateFromUnix(item.current_period_start),
-    currentPeriodEnd: dateFromUnix(item.current_period_end),
-    canceledAt: dateFromUnix(subscription.canceled_at),
-    endedAt: dateFromUnix(subscription.ended_at),
   });
 }
 

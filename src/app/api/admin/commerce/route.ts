@@ -1,3 +1,4 @@
+import { hasValidMutationOrigin } from "@/lib/mutation-origin";
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
@@ -6,7 +7,7 @@ import {
   createConnectedAccountDashboardLink,
   createConnectedAccountOnboardingLink,
   syncConnectedAccount,
-} from "@/lib/stripe-connect";
+} from "@/lib/merchant-accounts";
 
 export async function GET() {
   const access = await getTenantApiAccess("finance.read");
@@ -22,6 +23,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!hasValidMutationOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const body = await request.json().catch(() => null);
   const action = String(body?.action ?? "");
   const permission =
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
         error:
           error instanceof Error
             ? error.message
-            : "Unable to update Stripe commerce.",
+            : "Unable to update merchant commerce.",
       },
       { status: 400 },
     );

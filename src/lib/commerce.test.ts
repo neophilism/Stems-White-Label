@@ -31,7 +31,7 @@ test("Connect country normalizes to ISO-style uppercase", () => {
 test("commerce is ready only after onboarding, charges, and payouts are ready", () => {
   assert.deepEqual(
     commerceReadiness({
-      stripeAccountId: null,
+      providerAccountId: null,
       chargesEnabled: false,
       payoutsEnabled: false,
       detailsSubmitted: false,
@@ -42,7 +42,7 @@ test("commerce is ready only after onboarding, charges, and payouts are ready", 
 
   assert.equal(
     commerceReadiness({
-      stripeAccountId: "acct_1",
+      providerAccountId: "acct_1",
       chargesEnabled: true,
       payoutsEnabled: false,
       detailsSubmitted: true,
@@ -53,7 +53,7 @@ test("commerce is ready only after onboarding, charges, and payouts are ready", 
 
   assert.deepEqual(
     commerceReadiness({
-      stripeAccountId: "acct_1",
+      providerAccountId: "acct_1",
       chargesEnabled: true,
       payoutsEnabled: true,
       detailsSubmitted: true,

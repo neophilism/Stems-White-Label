@@ -140,14 +140,14 @@ async function main() {
       assertTenantCanRegisterCustomDomain(tenant.id),
     );
 
-    await db.stripeWebhookEvent.create({
+    await db.commerceWebhookEvent.create({
       data: {
         scope: "PAYMENTS",
         providerEventId: "evt_shared_" + suffix,
         eventType: "checkout.session.completed",
       },
     });
-    await db.stripeWebhookEvent.create({
+    await db.commerceWebhookEvent.create({
       data: {
         scope: "BILLING",
         providerEventId: "evt_shared_" + suffix,
@@ -155,7 +155,7 @@ async function main() {
       },
     });
     await assert.rejects(() =>
-      db.stripeWebhookEvent.create({
+      db.commerceWebhookEvent.create({
         data: {
           scope: "BILLING",
           providerEventId: "evt_shared_" + suffix,

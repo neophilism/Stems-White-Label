@@ -27,7 +27,7 @@ export default async function CommercePage({ searchParams }: PageProps) {
 
       <header className="cms-dashboard-header">
         <div>
-          <p className="eyebrow">Stripe Connect</p>
+          <p className="eyebrow">Merchant payments</p>
           <h1>{tenant.name}</h1>
           <p>
             Onboard the tenant merchant account, track payment and payout

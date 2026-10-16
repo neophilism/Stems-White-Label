@@ -24,9 +24,9 @@ type Plan = {
 
 type Subscription = {
   status: string;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
-  stripePriceId: string | null;
+  providerCustomerId: string | null;
+  providerSubscriptionId: string | null;
+  providerPriceId: string | null;
   planKey: string | null;
   planName: string | null;
   currency: string | null;
@@ -112,7 +112,7 @@ export function BillingManager({
     setPayload(data);
   }
 
-  async function action(actionName: "subscribe" | "portal" | "sync", priceId?: string) {
+  async function action(actionName: "subscribe" | "portal" | "sync" | "cancel", priceId?: string) {
     setBusy(actionName + (priceId ?? ""));
     setError(null);
     setMessage(null);
@@ -133,6 +133,7 @@ export function BillingManager({
 
       await load();
       setMessage("Subscription status refreshed.");
+      setBusy(null);
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Unable to update billing.");
       setBusy(null);
@@ -149,10 +150,10 @@ export function BillingManager({
       );
   }, []);
 
-  const currentPriceId = payload?.billing.subscription.stripePriceId ?? null;
+  const currentPriceId = payload?.billing.subscription.providerPriceId ?? null;
   const canUsePortal = Boolean(
-    payload?.billing.subscription.stripeCustomerId &&
-      payload?.billing.subscription.stripeSubscriptionId,
+    payload?.billing.subscription.providerCustomerId &&
+      payload?.billing.subscription.providerSubscriptionId,
   );
 
   const usageRows = useMemo(() => {
@@ -226,17 +227,20 @@ export function BillingManager({
               onClick={() => void action("portal")}
               type="button"
             >
-              {busy === "portal" ? "Opening…" : "Manage plan & billing"}
+              {busy === "portal" ? "Opening…" : "Manage payment method"}
             </button>
           ) : null}
-          {subscription.stripeSubscriptionId ? (
+          {subscription.providerSubscriptionId && subscription.status !== "CANCELED" ? (
+            <button className="cms-secondary-button" disabled={busy !== null} onClick={() => { if (window.confirm("Cancel this subscription? Access ends immediately.")) void action("cancel"); }} type="button">Cancel subscription</button>
+          ) : null}
+          {subscription.providerSubscriptionId ? (
             <button
               className="cms-secondary-button"
               disabled={busy !== null}
               onClick={() => void action("sync")}
               type="button"
             >
-              {busy === "sync" ? "Refreshing…" : "Refresh Stripe status"}
+              {busy === "sync" ? "Refreshing…" : "Refresh subscription status"}
             </button>
           ) : null}
         </div>
@@ -250,7 +254,7 @@ export function BillingManager({
           <p className="eyebrow">Usage</p>
           <h2>Current plan consumption</h2>
           <p>
-            Limits are snapshotted from the Stripe plan at subscription changes.
+            Limits are snapshotted from the selected plan at subscription changes.
             Existing content remains available if a limit is later reduced; new
             resource creation is blocked until usage is back within the plan.
           </p>
@@ -280,9 +284,9 @@ export function BillingManager({
           <p className="eyebrow">Plans</p>
           <h2>Choose the operating envelope.</h2>
           <p>
-            New subscriptions start through Stripe Checkout. Once subscribed,
-            upgrades, downgrades, payment methods, invoices, and cancellation are
-            managed through the Stripe Billing portal.
+            New subscriptions start through secure checkout. Once subscribed,
+            payment methods are managed in the hosted billing form. To change
+            plans, cancel your current subscription and choose a new one.
           </p>
         </div>
 
@@ -325,7 +329,7 @@ export function BillingManager({
                       onClick={() => void action("portal")}
                       type="button"
                     >
-                      Change in billing portal
+                      Manage payment method
                     </button>
                   ) : (
                     <button
@@ -343,7 +347,7 @@ export function BillingManager({
           </div>
         ) : (
           <p className="cms-empty">
-            No Stripe Billing Price IDs are configured for this environment.
+            No subscription billing Price IDs are configured for this environment.
           </p>
         )}
       </section>

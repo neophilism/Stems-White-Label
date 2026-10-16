@@ -101,7 +101,7 @@ export default async function PlatformTenantPage({
           <dl className="platform-metric-list">
             <dt>Status</dt><dd>{subscription?.status ?? "UNSUBSCRIBED"}</dd>
             <dt>Plan key</dt><dd>{subscription?.planKey ?? "—"}</dd>
-            <dt>Price ID</dt><dd>{subscription?.stripePriceId ?? "—"}</dd>
+            <dt>Price ID</dt><dd>{subscription?.providerPriceId ?? "—"}</dd>
             <dt>Period end</dt><dd>{date(subscription?.currentPeriodEnd)}</dd>
             <dt>Cancel at period end</dt><dd>{yesNo(subscription?.cancelAtPeriodEnd ?? false)}</dd>
             <dt>White-label entitlement</dt><dd>{yesNo(subscription?.allowWhiteLabel ?? false)}</dd>
@@ -110,8 +110,8 @@ export default async function PlatformTenantPage({
 
         <section className="cms-panel">
           <div className="cms-panel__heading">
-            <p className="eyebrow">Stripe Connect</p>
-            <h2>{commerce?.stripeAccountId ?? "Not connected"}</h2>
+            <p className="eyebrow">Merchant payments</p>
+            <h2>{commerce?.providerAccountId ?? "Not connected"}</h2>
           </div>
           <dl className="platform-metric-list">
             <dt>Charges enabled</dt><dd>{yesNo(commerce?.chargesEnabled ?? false)}</dd>

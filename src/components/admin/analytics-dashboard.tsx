@@ -99,7 +99,7 @@ export function AnalyticsDashboard({
           <p>
             Revenue is calculated from authoritative Payment and Refund records,
             not browser events. Net shown here is after customer refunds and
-            before Stripe processing fees or Connect settlement adjustments.
+            before payment provider processing fees or Connect settlement adjustments.
           </p>
         </div>
 

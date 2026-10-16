@@ -59,7 +59,7 @@ export default async function CustomerLibraryPage() {
           <section className="library-empty">
             <h2>No purchase profile is attached to this account.</h2>
             <p>
-              Sign in with the same email address used during Stripe Checkout.
+              Sign in with the same email address used during secure checkout.
             </p>
           </section>
         ) : licenses.length === 0 ? (

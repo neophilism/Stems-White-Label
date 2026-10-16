@@ -26,7 +26,10 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
       - run:
           name: Install application and generate Prisma client
-          command: npm install
+          command: npm ci
+      - run:
+          name: Existing installation migration preservation
+          command: npm run test:commerce-migration
       - run:
           name: Apply actual PostgreSQL migrations
           command: npm run db:deploy
@@ -53,7 +56,7 @@ jobs:
           command: npm run test:domains-integration
       - run:
           name: connect integration acceptance
-          command: npm run test:connect-integration
+          command: npm run test:commerce-integration
       - run:
           name: billing integration acceptance
           command: npm run test:billing-integration
@@ -73,6 +76,9 @@ jobs:
           name: licensing integration acceptance
           command: npm run test:licensing-integration
       - run:
+          name: payment isolation and concurrent refund acceptance
+          command: npm run test:payment-integration
+      - run:
           name: checkout integration acceptance
           command: npm run test:checkout-integration
       - run:
@@ -90,6 +96,9 @@ jobs:
       - run:
           name: Production build
           command: npm run build
+      - run:
+          name: Built server security and tenant isolation
+          command: npm run test:http-security
 
   security-status-record:
     docker:

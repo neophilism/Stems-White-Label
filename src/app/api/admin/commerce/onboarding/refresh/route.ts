@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getTenantApiAccess } from "@/lib/access";
-import { createConnectedAccountOnboardingLink } from "@/lib/stripe-connect";
+import { createConnectedAccountOnboardingLink } from "@/lib/merchant-accounts";
 
 export async function GET(request: Request) {
   const access = await getTenantApiAccess("tenant.manage");

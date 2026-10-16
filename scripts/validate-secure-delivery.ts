@@ -67,9 +67,10 @@ async function main() {
       "delivery@example.com",
     );
     const paid = await markOrderPaid({
+      amountCents: order.totalCents, currency: order.currency,
       orderId: order.id,
       email: "delivery@example.com",
-      stripePaymentIntentId: "pi_delivery_" + suffix,
+      providerTransactionId: "pi_delivery_" + suffix,
     });
     const customer = paid.customer!;
     const purchase = await db.purchaseLicense.findFirstOrThrow({

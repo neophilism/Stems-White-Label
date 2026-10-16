@@ -1,5 +1,10 @@
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { assertPaidOrderNotReopened, assertRefundAmounts, assertRefundReplay } from "@/lib/payment-integrity";
+import { assertPaidAmountMatchesOrder, assertPaidOrderNotReopened, assertRefundAmounts, assertRefundReplay } from "@/lib/payment-integrity";
+
+async function paymentTransaction<T>(run: (tx: Prisma.TransactionClient) => Promise<T>, tx?: Prisma.TransactionClient) {
+  return tx ? run(tx) : db.$transaction(run);
+}
 
 export function normalizeCustomerEmail(email: string) {
   return email.trim().toLowerCase();
@@ -8,13 +13,16 @@ export function normalizeCustomerEmail(email: string) {
 export async function markOrderPaid(input: {
   orderId: string;
   email: string;
+  amountCents: number;
+  currency: string;
   customerName?: string | null;
-  stripeCustomerId?: string | null;
-  stripePaymentIntentId?: string | null;
-}) {
+  providerCustomerId?: string | null;
+  providerTransactionId?: string | null;
+}, transaction?: Prisma.TransactionClient) {
   const normalizedEmail = normalizeCustomerEmail(input.email);
 
-  return db.$transaction(async (tx) => {
+  return paymentTransaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
     const order = await tx.order.findUnique({
       where: { id: input.orderId },
       include: {
@@ -24,6 +32,10 @@ export async function markOrderPaid(input: {
     });
     if (!order) throw new Error("Order not found.");
     assertPaidOrderNotReopened(order.status);
+    assertPaidAmountMatchesOrder({ amountCents: order.totalCents, currency: order.currency }, input);
+    if (order.buyerEmail && normalizeCustomerEmail(order.buyerEmail) !== normalizedEmail) throw new Error("Payment email does not match the order buyer.");
+    if (!input.providerTransactionId || (order.providerTransactionId && order.providerTransactionId !== input.providerTransactionId)) throw new Error("Payment transaction does not match the order.");
+    if (order.payments.length !== 1) throw new Error("Order must have exactly one payment record.");
     if (order.status === "CANCELED") throw new Error("Canceled order cannot be fulfilled without payment reconciliation.");
 
     const customer = await tx.customer.upsert({
@@ -36,14 +48,14 @@ export async function markOrderPaid(input: {
       update: {
         email: input.email,
         name: input.customerName ?? undefined,
-        stripeCustomerId: input.stripeCustomerId ?? undefined,
+        providerCustomerId: input.providerCustomerId ?? undefined,
       },
       create: {
         tenantId: order.tenantId,
         email: input.email,
         normalizedEmail,
         name: input.customerName ?? null,
-        stripeCustomerId: input.stripeCustomerId ?? null,
+        providerCustomerId: input.providerCustomerId ?? null,
       },
     });
 
@@ -54,7 +66,7 @@ export async function markOrderPaid(input: {
           status: "PAID",
           customerId: customer.id,
           buyerEmail: input.email,
-          stripePaymentIntentId: input.stripePaymentIntentId ?? undefined,
+          providerTransactionId: input.providerTransactionId ?? undefined,
           paidAt: new Date(),
           failedAt: null,
           canceledAt: null,
@@ -73,7 +85,7 @@ export async function markOrderPaid(input: {
         where: { id: payment.id },
         data: {
           status: "SUCCEEDED",
-          providerPaymentId: input.stripePaymentIntentId ?? undefined,
+          providerPaymentId: input.providerTransactionId ?? undefined,
           failureCode: null,
           failureMessage: null,
         },
@@ -122,29 +134,30 @@ export async function markOrderPaid(input: {
         payments: true,
       },
     });
-  });
+  }, transaction);
 }
 
 export async function markOrderPaymentFailed(input: {
   orderId: string;
-  stripePaymentIntentId?: string | null;
+  providerTransactionId?: string | null;
   failureCode?: string | null;
   failureMessage?: string | null;
-}) {
-  return db.$transaction(async (tx) => {
+}, transaction?: Prisma.TransactionClient) {
+  return paymentTransaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
     const order = await tx.order.findUnique({
       where: { id: input.orderId },
       include: { payments: true },
     });
     if (!order) throw new Error("Order not found.");
-    if (order.status === "PAID" || order.status === "REFUNDED") return order;
+    if (["PAID", "PARTIALLY_REFUNDED", "REFUNDED", "CANCELED"].includes(order.status)) return order;
 
     await tx.order.update({
       where: { id: order.id },
       data: {
         status: "PAYMENT_FAILED",
         failedAt: new Date(),
-        stripePaymentIntentId: input.stripePaymentIntentId ?? undefined,
+        providerTransactionId: input.providerTransactionId ?? undefined,
       },
     });
 
@@ -154,7 +167,7 @@ export async function markOrderPaymentFailed(input: {
         where: { id: payment.id },
         data: {
           status: "FAILED",
-          providerPaymentId: input.stripePaymentIntentId ?? undefined,
+          providerPaymentId: input.providerTransactionId ?? undefined,
           failureCode: input.failureCode ?? null,
           failureMessage: input.failureMessage ?? null,
         },
@@ -165,7 +178,7 @@ export async function markOrderPaymentFailed(input: {
       where: { id: order.id },
       include: { payments: true },
     });
-  });
+  }, transaction);
 }
 
 export async function recordRefund(input: {
@@ -173,12 +186,13 @@ export async function recordRefund(input: {
   providerRefundId: string;
   amountCents: number;
   reason?: string | null;
-}) {
+}, transaction?: Prisma.TransactionClient) {
   if (!Number.isSafeInteger(input.amountCents) || input.amountCents < 0) {
     throw new Error("Refund amount must be a non-negative integer.");
   }
 
-  return db.$transaction(async (tx) => {
+  return paymentTransaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${input.orderId} FOR UPDATE`;
     const order = await tx.order.findUnique({
       where: { id: input.orderId },
       include: { payments: { include: { refunds: true } } },
@@ -191,7 +205,7 @@ export async function recordRefund(input: {
       throw new Error("Only settled payments may be refunded.");
     }
     const existingRefund = await tx.refund.findUnique({
-      where: { providerRefundId: input.providerRefundId },
+      where: { provider_accountId_providerRefundId: { provider: payment.provider, accountId: payment.providerAccountId ?? "legacy", providerRefundId: input.providerRefundId } },
     });
     if (existingRefund) {
       assertRefundReplay(existingRefund, {
@@ -210,6 +224,7 @@ export async function recordRefund(input: {
       await tx.refund.create({
         data: {
           paymentId: payment.id,
+          provider: payment.provider, accountId: payment.providerAccountId ?? "legacy",
           providerRefundId: input.providerRefundId,
           amountCents: input.amountCents,
           status: "REFUNDED",
@@ -255,5 +270,5 @@ export async function recordRefund(input: {
       where: { id: order.id },
       include: { payments: { include: { refunds: true } } },
     });
-  });
+  }, transaction);
 }

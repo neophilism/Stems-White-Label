@@ -26,8 +26,9 @@ committed package lock. Do not enable paid services without explicit approval.
   **private service environment variables**, never in a client bundle.
 * On the platform-owned Render hostname only, set `PLATFORM_DEFAULT_HOSTNAME=stems-white-label-preview.onrender.com` and `DEFAULT_TENANT_SLUG=unsealed-records` as server environment variables. Without this exact host setting, the shared preview hostname cannot resolve a tenant when `TenantDomain` has no verified domain rows. This narrow fallback is intentionally separate from customer custom domain verification. Do not configure unowned hostnames or wildcard values here.
 * Configure NextAuth GitHub OAuth, production `NEXTAUTH_URL` and
-  `NEXTAUTH_SECRET`, customer SMTP, private upload bucket CORS, Stripe
-  Checkout/Connect/Billing webhook endpoints and *separate signing secrets*.
+  `NEXTAUTH_SECRET`, customer SMTP, private upload bucket CORS, payment provider
+  merchant and subscription webhook endpoints with account-specific signing keys.
+  Follow [COMMERCE-GATEWAYS.md](COMMERCE-GATEWAYS.md); obsolete provider environment variables are no longer used.
 * Configure custom-domain routing targets, verify domain ownership, route and
   HTTPS readiness through tenant administration. DNS/certificate provisioning
   remains a hosting-provider task.

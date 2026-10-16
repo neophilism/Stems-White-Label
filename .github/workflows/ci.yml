@@ -35,7 +35,8 @@ jobs:
         with:
           node-version: 22
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg unzip
-      - run: npm install
+      - run: npm ci
+      - run: npm run test:commerce-migration
       - run: npm run db:deploy
       - run: npm test
       - run: node --test scripts/live-smoke.test.mjs
@@ -44,16 +45,18 @@ jobs:
       - run: npm run test:navigation-integration
       - run: npm run test:theme-integration
       - run: npm run test:domains-integration
-      - run: npm run test:connect-integration
+      - run: npm run test:commerce-integration
       - run: npm run test:billing-integration
       - run: npm run test:analytics-integration
       - run: npm run test:platform-admin-integration
       - run: npm run test:team-integration
       - run: npm run test:demo-integration
       - run: npm run test:licensing-integration
+      - run: npm run test:payment-integration
       - run: npm run test:checkout-integration
       - run: npm run test:delivery-integration
       - run: npm run test:package-integration
       - run: npm run test:media-integration
       - run: npm run typecheck
       - run: npm run build
+      - run: npm run test:http-security

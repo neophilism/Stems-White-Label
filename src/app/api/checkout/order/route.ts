@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (!sessionId) return NextResponse.json({ error: "Missing session id." }, { status: 400 });
 
   const order = await db.order.findFirst({
-    where: { tenantId: tenant.id, stripeCheckoutSessionId: sessionId },
+    where: { tenantId: tenant.id, providerCheckoutSessionId: sessionId },
     select: {
       id: true,
       status: true,

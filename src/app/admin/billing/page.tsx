@@ -31,7 +31,7 @@ export default async function BillingPage({ searchParams }: PageProps) {
           <p>
             Manage the platform subscription, trials, plan changes, usage limits,
             invoices, and billing details independently from the tenant&apos;s
-            Stripe Connect merchant account.
+            Merchant payments merchant account.
           </p>
         </div>
       </header>
