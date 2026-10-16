@@ -1,9 +1,15 @@
 {
-  "schemaVersion": 1,
   "repository": "neophilism/Stems-White-Label",
-  "roadmapVersion": 1,
+  "title": "Stems-White-Label",
   "planVerified": true,
   "plannedPrCount": 30,
+  "sourceFiles": [
+    ".exechub/project.yml",
+    "docs/DEVELOPMENT_PLAN.md",
+    ".exechub/approved-pr-mapping.json"
+  ],
+  "schemaVersion": 1,
+  "roadmapVersion": 1,
   "observedAt": "2026-10-11T17:39:35.574Z",
   "units": [
     {
@@ -12,7 +18,11 @@
       "origin": "original",
       "prs": [
         1
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-02",
@@ -20,7 +30,11 @@
       "origin": "original",
       "prs": [
         2
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-03",
@@ -28,7 +42,11 @@
       "origin": "original",
       "prs": [
         3
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-04",
@@ -36,7 +54,11 @@
       "origin": "original",
       "prs": [
         4
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-05",
@@ -44,7 +66,11 @@
       "origin": "original",
       "prs": [
         5
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-06",
@@ -52,7 +78,11 @@
       "origin": "original",
       "prs": [
         6
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-07",
@@ -60,7 +90,11 @@
       "origin": "original",
       "prs": [
         7
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-08",
@@ -68,7 +102,11 @@
       "origin": "original",
       "prs": [
         8
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-09",
@@ -76,7 +114,11 @@
       "origin": "original",
       "prs": [
         9
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-10",
@@ -84,7 +126,11 @@
       "origin": "original",
       "prs": [
         10
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-11",
@@ -92,7 +138,11 @@
       "origin": "original",
       "prs": [
         11
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-12",
@@ -100,7 +150,11 @@
       "origin": "original",
       "prs": [
         12
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-13",
@@ -108,7 +162,11 @@
       "origin": "original",
       "prs": [
         13
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-14",
@@ -116,7 +174,11 @@
       "origin": "original",
       "prs": [
         14
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-15",
@@ -124,7 +186,11 @@
       "origin": "original",
       "prs": [
         15
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-16",
@@ -132,7 +198,11 @@
       "origin": "original",
       "prs": [
         16
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-17",
@@ -140,7 +210,11 @@
       "origin": "original",
       "prs": [
         17
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-18",
@@ -148,7 +222,11 @@
       "origin": "original",
       "prs": [
         18
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-19",
@@ -156,7 +234,11 @@
       "origin": "original",
       "prs": [
         19
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-20",
@@ -164,7 +246,11 @@
       "origin": "original",
       "prs": [
         20
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-21",
@@ -172,7 +258,11 @@
       "origin": "original",
       "prs": [
         21
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-22",
@@ -180,7 +270,11 @@
       "origin": "original",
       "prs": [
         22
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-23",
@@ -188,49 +282,81 @@
       "origin": "original",
       "prs": [
         23
-      ]
+      ],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-24",
       "title": "Security and operations controls",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-25",
       "title": "Deployment and worker observability",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-26",
       "title": "Stripe commerce and end-to-end license verification",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-27",
       "title": "Real Unsealed Records flagship catalog and creator onboarding",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-28",
       "title": "Multi-tenant integration, accessibility and regression acceptance",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-29",
       "title": "Provider cutover, private audio, durable workers and backups",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     },
     {
       "id": "SWL-30",
       "title": "Final real customer release and paid-license download acceptance",
       "origin": "original",
-      "prs": []
+      "prs": [],
+      "sourceSection": "docs/DEVELOPMENT_PLAN.md",
+      "dependsOn": [],
+      "externalDependencies": [],
+      "externalPrerequisites": []
     }
   ],
   "pullRequests": [
