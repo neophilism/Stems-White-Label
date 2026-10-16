@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type Commerce = {
-  stripeAccountId: string | null;
+  providerAccountId: string | null;
   country: string | null;
   defaultCurrency: string | null;
   chargesEnabled: boolean;
@@ -79,7 +79,8 @@ export function CommerceManager({
       }
 
       setCommerce(payload.commerce);
-      setMessage("Stripe account status refreshed.");
+      setMessage("Merchant configuration refreshed.");
+      setBusy(null);
     } catch (actionError) {
       setError(
         actionError instanceof Error
@@ -107,7 +108,7 @@ export function CommerceManager({
   }, []);
 
   if (!commerce) {
-    return <p className="cms-loading">Loading Stripe Connect status…</p>;
+    return <p className={error ? "cms-error" : "cms-loading"}>{error ?? "Loading merchant status…"}</p>;
   }
 
   const due = asStrings(commerce.requirementsCurrentlyDue);
@@ -124,7 +125,7 @@ export function CommerceManager({
             <p className="eyebrow">Merchant status</p>
             <h2>{commerce.status.replaceAll("_", " ")}</h2>
             <p>
-              Checkout is enabled only when Stripe has completed onboarding and
+              Checkout is enabled after merchant configuration is approved and
               both payment collection and payouts are available.
             </p>
           </div>
@@ -153,8 +154,8 @@ export function CommerceManager({
         </div>
 
         <dl className="commerce-metadata">
-          <dt>Stripe account</dt>
-          <dd>{commerce.stripeAccountId ?? "Not connected"}</dd>
+          <dt>merchant account</dt>
+          <dd>{commerce.providerAccountId ?? "Not connected"}</dd>
           <dt>Country</dt>
           <dd>{commerce.country ?? "Not selected"}</dd>
           <dt>Default currency</dt>
@@ -165,7 +166,7 @@ export function CommerceManager({
 
         {commerce.disabledReason ? (
           <p className="commerce-warning">
-            Stripe restriction: {commerce.disabledReason}
+            Merchant restriction: {commerce.disabledReason}
           </p>
         ) : null}
 
@@ -193,7 +194,7 @@ export function CommerceManager({
         ) : null}
 
         <div className="commerce-actions">
-          {commerce.stripeAccountId ? (
+          {commerce.providerAccountId ? (
             <>
               {canManage && !commerce.ready ? (
                 <button
@@ -211,7 +212,7 @@ export function CommerceManager({
                 onClick={() => void run("sync")}
                 type="button"
               >
-                {busy === "sync" ? "Refreshing…" : "Refresh Stripe status"}
+                {busy === "sync" ? "Refreshing…" : "Refresh merchant status"}
               </button>
               <button
                 className="cms-secondary-button"
@@ -219,7 +220,7 @@ export function CommerceManager({
                 onClick={() => void run("dashboard")}
                 type="button"
               >
-                {busy === "dashboard" ? "Opening…" : "Open Stripe dashboard"}
+                {busy === "dashboard" ? "Opening…" : "Open merchant dashboard"}
               </button>
             </>
           ) : canManage ? (
@@ -238,12 +239,12 @@ export function CommerceManager({
                 onClick={() => void run("start-onboarding")}
                 type="button"
               >
-                {busy === "start-onboarding" ? "Opening…" : "Connect with Stripe"}
+                {busy === "start-onboarding" ? "Opening…" : "Connect merchant account"}
               </button>
             </div>
           ) : (
             <p className="commerce-warning">
-              An Owner or Administrator must start Stripe onboarding.
+              An Owner or Administrator must start merchant onboarding.
             </p>
           )}
         </div>
@@ -254,12 +255,12 @@ export function CommerceManager({
 
       <section className="cms-panel commerce-settlement-note">
         <p className="eyebrow">Settlement architecture</p>
-        <h2>Destination charges</h2>
+        <h2>Merchant settlement</h2>
         <p>
-          Customer payments are created on the platform Stripe account. The
-          tenant&apos;s connected Stripe account is the transfer destination, and
-          the platform fee is fixed into each Order and Payment when Checkout
-          begins.
+          Hosted checkout collects payment directly for the configured merchant.
+          Settlement and bank payouts are handled by that merchant&apos;s acquirer.
+          Automatic marketplace splits require a provider that supports them;
+          checkout stays paused when an unsupported platform fee is configured.
         </p>
         <p>
           The platform fee shown above is controlled by the platform, not by

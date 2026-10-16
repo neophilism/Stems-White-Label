@@ -182,7 +182,7 @@
     },
     {
       "id": "SWL-15",
-      "title": "Stripe Connect tenant commerce",
+      "title": "Merchant tenant commerce",
       "origin": "original",
       "prs": [
         15
@@ -296,7 +296,16 @@
       "sourceSection": "docs/DEVELOPMENT_PLAN.md",
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        35
+      ],
+      "implementationEvidence": {
+        "pullRequest": 35,
+        "status": "open",
+        "checkpoint": "docs/CURRENT_STATUS.md",
+        "acceptance": "Partial implementation; real provider, requested settlement and deployment acceptance remain pending."
+      }
     },
     {
       "id": "SWL-25",
@@ -310,13 +319,22 @@
     },
     {
       "id": "SWL-26",
-      "title": "Stripe commerce and end-to-end license verification",
+      "title": "Merchant commerce and end-to-end license verification",
       "origin": "original",
       "prs": [],
       "sourceSection": "docs/DEVELOPMENT_PLAN.md",
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        35
+      ],
+      "implementationEvidence": {
+        "pullRequest": 35,
+        "status": "open",
+        "checkpoint": "docs/CURRENT_STATUS.md",
+        "acceptance": "Partial implementation; real provider, requested settlement and deployment acceptance remain pending."
+      }
     },
     {
       "id": "SWL-27",
@@ -336,7 +354,16 @@
       "sourceSection": "docs/DEVELOPMENT_PLAN.md",
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        35
+      ],
+      "implementationEvidence": {
+        "pullRequest": 35,
+        "status": "open",
+        "checkpoint": "docs/CURRENT_STATUS.md",
+        "acceptance": "Partial implementation; real provider, requested settlement and deployment acceptance remain pending."
+      }
     },
     {
       "id": "SWL-29",
@@ -346,7 +373,16 @@
       "sourceSection": "docs/DEVELOPMENT_PLAN.md",
       "dependsOn": [],
       "externalDependencies": [],
-      "externalPrerequisites": []
+      "externalPrerequisites": [],
+      "contributingPrs": [
+        35
+      ],
+      "implementationEvidence": {
+        "pullRequest": 35,
+        "status": "open",
+        "checkpoint": "docs/CURRENT_STATUS.md",
+        "acceptance": "Partial implementation; real provider, requested settlement and deployment acceptance remain pending."
+      }
     },
     {
       "id": "SWL-30",

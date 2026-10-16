@@ -142,7 +142,7 @@ export function CartClient({ buyNowId }: { buyNowId: string | null }) {
           <h1>Review the license record.</h1>
           <p>
             These exact license versions and terms will be frozen into the order
-            before Stripe Checkout opens.
+            before secure checkout opens.
           </p>
         </div>
         <strong>{total}</strong>
@@ -194,9 +194,10 @@ export function CartClient({ buyNowId }: { buyNowId: string | null }) {
         </label>
 
         <label className="cart-review__email">
-          <span>Email (optional before Stripe; Stripe will collect one if blank)</span>
+          <span>Email for your license and downloads</span>
           <input
             type="email"
+            required
             value={buyerEmail}
             onChange={(event) => setBuyerEmail(event.target.value)}
             placeholder="you@example.com"
@@ -216,7 +217,7 @@ export function CartClient({ buyNowId }: { buyNowId: string | null }) {
           onClick={() => void checkout()}
           type="button"
         >
-          {busy ? "Opening secure checkout…" : "Continue to Stripe"}
+          {busy ? "Opening secure checkout…" : "Continue to payment"}
         </button>
 
         {error ? <p className="cart-review__error">{error}</p> : null}

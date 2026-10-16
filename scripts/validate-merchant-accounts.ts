@@ -27,7 +27,7 @@ async function main() {
 
   try {
     const baseSnapshot = {
-      stripeAccountId: "acct_validation_" + suffix,
+      providerAccountId: "acct_validation_" + suffix,
       country: "US",
       defaultCurrency: "usd",
       chargesEnabled: false,
@@ -64,10 +64,13 @@ async function main() {
       data: { platformFeeBps: 750 },
     });
 
+    process.env.COMMERCE_MERCHANTS_JSON = JSON.stringify({ [tenant.id]: { accountId: baseSnapshot.providerAccountId, apiLoginId: "test", transactionKey: "test", signatureKey: "ab".repeat(64), currency: "USD", mode: "sandbox", underwritingApproved: false } });
+    await assert.rejects(() => getTenantCommerceForCheckout(tenant.id, 12500), /platform fee splits/);
+    await db.tenantCommerce.update({ where: { tenantId: tenant.id }, data: { platformFeeBps: 0 } });
     const settlement = await getTenantCommerceForCheckout(tenant.id, 12500);
-    assert.equal(settlement.stripeAccountId, baseSnapshot.stripeAccountId);
-    assert.equal(settlement.platformFeeBps, 750);
-    assert.equal(settlement.platformFeeCents, 938);
+    assert.equal(settlement.providerAccountId, baseSnapshot.providerAccountId);
+    assert.equal(settlement.platformFeeBps, 0);
+    assert.equal(settlement.platformFeeCents, 0);
     assert.equal(calculatePlatformFeeCents(10000, 750), 750);
 
     await assert.rejects(() =>
@@ -80,7 +83,7 @@ async function main() {
     );
 
     const blocked = commerceReadiness({
-      stripeAccountId: "acct_blocked",
+      providerAccountId: "acct_blocked",
       chargesEnabled: true,
       payoutsEnabled: false,
       detailsSubmitted: true,
@@ -89,7 +92,7 @@ async function main() {
     assert.equal(blocked.ready, false);
     assert.equal(blocked.status, "RESTRICTED");
 
-    console.log("Stripe Connect commerce database integration validation passed.");
+    console.log("merchant payments commerce database integration validation passed.");
   } finally {
     await db.tenant.deleteMany({
       where: { id: { in: [tenant.id, secondTenant.id] } },

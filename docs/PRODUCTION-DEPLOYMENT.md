@@ -26,8 +26,9 @@ committed package lock. Do not enable paid services without explicit approval.
   **private service environment variables**, never in a client bundle.
 * On the platform-owned Render hostname only, set `PLATFORM_DEFAULT_HOSTNAME=stems-white-label-preview.onrender.com` and `DEFAULT_TENANT_SLUG=unsealed-records` as server environment variables. Without this exact host setting, the shared preview hostname cannot resolve a tenant when `TenantDomain` has no verified domain rows. This narrow fallback is intentionally separate from customer custom domain verification. Do not configure unowned hostnames or wildcard values here.
 * Configure NextAuth GitHub OAuth, production `NEXTAUTH_URL` and
-  `NEXTAUTH_SECRET`, customer SMTP, private upload bucket CORS, Stripe
-  Checkout/Connect/Billing webhook endpoints and *separate signing secrets*.
+  `NEXTAUTH_SECRET`, customer SMTP, private upload bucket CORS, payment provider
+  merchant and subscription webhook endpoints with account-specific signing keys.
+  Follow [COMMERCE-GATEWAYS.md](COMMERCE-GATEWAYS.md); obsolete provider environment variables are no longer used.
 * Configure custom-domain routing targets, verify domain ownership, route and
   HTTPS readiness through tenant administration. DNS/certificate provisioning
   remains a hosting-provider task.
@@ -71,3 +72,31 @@ Retain previous healthy image/commit, track migration compatibility, disable
 checkout first if payment reconciliation is impaired, and roll back the web
 service only when database changes are backward compatible. Do not reverse
 irreversible schema/data migrations automatically.
+
+## Prepared container and worker configuration
+
+`Dockerfile` builds the web, asset and package-worker code at one commit with
+FFmpeg/ffprobe and a non-root runtime user. It uses an init process so termination
+signals reach workers and child audio processes. It includes the TypeScript
+runtime and Prisma CLI because existing runtime scripts require them. No secrets
+are accepted as build arguments. GitHub run 38940814094 built the container and verified the non-root Prisma
+runtime and FFmpeg/ffprobe binaries. Runtime queue acceptance still requires an
+appropriately configured environment.
+
+The default container starts HTTP only, without automatic migrations. Apply the
+coordinated commerce migration with a single migration actor before deploying
+matching code. For the current native Node web service use `npm ci && npm run build`
+and `npm start -- --hostname 0.0.0.0 --port $PORT`; its prestart migration/bootstrap
+behavior remains unchanged. A real cutover must drain and stop the old app first.
+
+`deploy/render-workers.yaml` is a review-only Blueprint for two separate workers,
+not an already applied deployment. Render workers require a paid plan; no new paid
+resource was created. Before applying, supply the approved `stems-private-media`
+environment group with `DATABASE_URL`, `OBJECT_STORAGE_BUCKET`,
+`OBJECT_STORAGE_REGION`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`,
+`OBJECT_STORAGE_SECRET_ACCESS_KEY` and `OBJECT_STORAGE_FORCE_PATH_STYLE` matching
+the intended isolated test environment. Do not include web authentication,
+merchant or billing credentials in this worker group. Review and approve worker
+cost before provisioning; then build both workers from the exact accepted web
+commit, run the existing real media/package integration suites and verify queue
+claims, recovery and graceful shutdown in that environment.

@@ -74,7 +74,7 @@ export default async function AdminPage() {
         <section className="cms-panel">
           <p className="eyebrow">Commerce & payouts</p>
           <h2 style={{ fontFamily: "var(--serif)", fontSize: "2.8rem", fontWeight: 400 }}>
-            Stripe Connect
+            Merchant payments
           </h2>
           <p style={{ color: "var(--muted)", lineHeight: 1.6 }}>
             Onboard the tenant merchant account, review payment and payout

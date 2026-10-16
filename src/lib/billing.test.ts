@@ -7,13 +7,13 @@ import {
 } from "./billing";
 
 test("billing price allowlist removes duplicates and blanks", () => {
-  const previous = process.env.STRIPE_BILLING_PRICE_IDS;
-  process.env.STRIPE_BILLING_PRICE_IDS = "price_a, price_b,price_a,,";
+  const previous = process.env.SAAS_BILLING_PRICE_IDS;
+  process.env.SAAS_BILLING_PRICE_IDS = "price_a, price_b,price_a,,";
   try {
     assert.deepEqual(allowedBillingPriceIds(), ["price_a", "price_b"]);
   } finally {
-    if (previous === undefined) delete process.env.STRIPE_BILLING_PRICE_IDS;
-    else process.env.STRIPE_BILLING_PRICE_IDS = previous;
+    if (previous === undefined) delete process.env.SAAS_BILLING_PRICE_IDS;
+    else process.env.SAAS_BILLING_PRICE_IDS = previous;
   }
 });
 
@@ -71,4 +71,11 @@ test("unsubscribed and terminal subscriptions fail closed", () => {
       false,
     );
   }
+});
+
+
+test("trial and paid periods expire even when the next provider notification is delayed", () => {
+  const now = new Date("2026-10-16T12:00:00Z");
+  assert.equal(subscriptionAccessState({ status: "TRIALING", pastDueGraceUntil: null, trialEnd: new Date("2026-10-16T11:59:59Z") }, now).allowed, false);
+  assert.equal(subscriptionAccessState({ status: "ACTIVE", pastDueGraceUntil: null, currentPeriodEnd: new Date("2026-10-16T11:59:59Z") }, now).allowed, false);
 });

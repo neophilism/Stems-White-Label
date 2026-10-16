@@ -4311,7 +4311,7 @@ body[data-theme-preset="GALLERY"]::before {
 }
 
 
-/* Stripe Connect tenant commerce */
+/* Merchant payments tenant commerce */
 
 .commerce-manager {
   display: grid;

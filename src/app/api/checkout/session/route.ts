@@ -15,7 +15,8 @@ import {
 } from "@/lib/checkout";
 import { getTenantCommerceForCheckout } from "@/lib/commerce";
 import { db } from "@/lib/db";
-import { getStripe } from "@/lib/stripe";
+import { getPaymentGateway } from "@/lib/payment-gateway";
+import { checkoutIdentifiers, encryptHostedToken } from "@/lib/hosted-checkout";
 import { getCurrentTenant } from "@/lib/tenant";
 
 export async function POST(request: Request) {
@@ -35,75 +36,38 @@ export async function POST(request: Request) {
       tenant.id,
       quote.subtotalCents,
     );
+    if (!buyerEmail) throw new Error("A buyer email address is required.");
+    const gateway = getPaymentGateway(tenant.id);
+    if (commerce.provider !== gateway.provider || commerce.providerAccountId !== gateway.accountId) throw new Error("Merchant configuration does not match this storefront.");
+    if (commerce.platformFeeCents && !gateway.supportsSplitSettlement) throw new Error("This merchant provider does not support split settlement. Set platform fees to zero before checkout.");
+    const identifiers = checkoutIdentifiers();
     const order = await createPendingOrder(
       tenant.id,
       quote,
       body?.termsAccepted === true,
       buyerEmail,
       {
-        stripeConnectedAccountId: commerce.stripeAccountId,
+        provider: gateway.provider,
+        providerAccountId: commerce.providerAccountId,
         platformFeeCents: commerce.platformFeeCents,
       },
     );
 
     try {
-      const stripe = getStripe();
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        customer_creation: "always",
-        customer_email: buyerEmail ?? undefined,
-        success_url: origin + "/checkout/success?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url: origin + "/cart?canceled=1",
-        metadata: {
-          orderId: order.id,
-          tenantId: tenant.id,
-          stripeConnectedAccountId: commerce.stripeAccountId,
-          platformFeeCents: String(commerce.platformFeeCents),
-        },
-        payment_intent_data: {
-          receipt_email: buyerEmail ?? undefined,
-          application_fee_amount:
-            commerce.platformFeeCents > 0
-              ? commerce.platformFeeCents
-              : undefined,
-          transfer_data: {
-            destination: commerce.stripeAccountId,
-          },
-          transfer_group: "order_" + order.id,
-          metadata: {
-            orderId: order.id,
-            tenantId: tenant.id,
-            stripeConnectedAccountId: commerce.stripeAccountId,
-            platformFeeCents: String(commerce.platformFeeCents),
-          },
-        },
-        line_items: quote.items.map((item) => ({
-          quantity: 1,
-          price_data: {
-            currency: item.currency.toLowerCase(),
-            unit_amount: item.priceCents,
-            product_data: {
-              name: item.workTitle + " — " + item.licenseName,
-              description: "License version " + item.licenseVersionNumber,
-              metadata: {
-                licenseProductId: item.licenseProductId,
-                licenseVersionId: item.licenseVersionId,
-              },
-            },
-          },
-        })),
+      const form = await gateway.hostedPayment({
+        reference: identifiers.reference, amountCents: order.totalCents, currency: order.currency, email: buyerEmail,
+        returnUrl: origin + "/checkout/success?session_id=" + identifiers.id,
+        cancelUrl: origin + "/cart?canceled=1",
       });
-
-      if (!session.url) throw new Error("Stripe did not return a checkout URL.");
-
-      await db.order.update({
-        where: { id: order.id },
-        data: {
-          status: "CHECKOUT_CREATED",
-          stripeCheckoutSessionId: session.id,
-          stripePaymentIntentId:
-            typeof session.payment_intent === "string" ? session.payment_intent : undefined,
-        },
+      await db.$transaction(async tx => {
+        await tx.hostedCheckout.create({ data: {
+          ...identifiers, tenantId: tenant.id, orderId: order.id, kind: "PAYMENT", provider: gateway.provider,
+          accountId: gateway.accountId, token: encryptHostedToken(form.token, tenant.id), actionUrl: form.actionUrl,
+          expiresAt: new Date(Date.now() + 14 * 60_000),
+        } });
+        await tx.order.update({ where: { id: order.id }, data: {
+          status: "CHECKOUT_CREATED", providerCheckoutSessionId: identifiers.id,
+        } });
       });
 
       const cookieStore = await cookies();
@@ -119,13 +83,13 @@ export async function POST(request: Request) {
         console.error("Unable to record checkout analytics", analyticsError);
       });
 
-      return NextResponse.json({ url: session.url, orderId: order.id });
-    } catch (stripeError) {
+      return NextResponse.json({ url: origin + "/checkout/pay/" + identifiers.id, orderId: order.id });
+    } catch (gatewayError) {
       await db.order.update({
         where: { id: order.id },
         data: { status: "CANCELED", canceledAt: new Date() },
       }).catch(() => undefined);
-      throw stripeError;
+      throw gatewayError;
     }
   } catch (error) {
     return NextResponse.json(

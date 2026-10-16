@@ -1,3 +1,5 @@
+import { checkoutReturnOrigin } from "@/lib/checkout-origin";
+import { hasValidMutationOrigin } from "@/lib/mutation-origin";
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
@@ -6,10 +8,11 @@ import {
   listBillingPlans,
 } from "@/lib/billing";
 import {
+  cancelTenantSubscription,
   createSaasCheckoutSession,
   createSaasPortalSession,
-  refreshTenantStripeSubscription,
-} from "@/lib/stripe-billing";
+  refreshTenantSubscription,
+} from "@/lib/subscription-gateway";
 
 function serializeState(state: Awaited<ReturnType<typeof getTenantBillingState>>) {
   return {
@@ -69,6 +72,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!hasValidMutationOrigin(request)) return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
   const access = await getTenantApiAccess("tenant.manage");
   if (!access) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
@@ -76,9 +80,13 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
   const action = String(body?.action ?? "");
-  const origin = new URL(request.url).origin;
+  const origin = checkoutReturnOrigin(request.url, request.headers.get("host"), process.env.NODE_ENV === "production");
 
   try {
+    if (action === "cancel") {
+      await cancelTenantSubscription(access.tenant.id);
+      return NextResponse.json({ billing: serializeState(await getTenantBillingState(access.tenant.id)) });
+    }
     if (action === "subscribe") {
       const url = await createSaasCheckoutSession({
         tenantId: access.tenant.id,
@@ -99,7 +107,7 @@ export async function POST(request: Request) {
     }
 
     if (action === "sync") {
-      await refreshTenantStripeSubscription(access.tenant.id);
+      await refreshTenantSubscription(access.tenant.id);
       const state = await getTenantBillingState(access.tenant.id);
       return NextResponse.json({ billing: serializeState(state) });
     }

@@ -31,7 +31,7 @@ test("Connect country normalizes to ISO-style uppercase", () => {
 test("commerce is ready only after onboarding, charges, and payouts are ready", () => {
   assert.deepEqual(
     commerceReadiness({
-      stripeAccountId: null,
+      providerAccountId: null,
       chargesEnabled: false,
       payoutsEnabled: false,
       detailsSubmitted: false,
@@ -42,7 +42,7 @@ test("commerce is ready only after onboarding, charges, and payouts are ready", 
 
   assert.equal(
     commerceReadiness({
-      stripeAccountId: "acct_1",
+      providerAccountId: "acct_1",
       chargesEnabled: true,
       payoutsEnabled: false,
       detailsSubmitted: true,
@@ -53,7 +53,7 @@ test("commerce is ready only after onboarding, charges, and payouts are ready", 
 
   assert.deepEqual(
     commerceReadiness({
-      stripeAccountId: "acct_1",
+      providerAccountId: "acct_1",
       chargesEnabled: true,
       payoutsEnabled: true,
       detailsSubmitted: true,
@@ -61,4 +61,11 @@ test("commerce is ready only after onboarding, charges, and payouts are ready", 
     }),
     { ready: true, status: "READY" },
   );
+});
+
+
+test("platform fee rounding stays exact across the supported integer range", () => {
+  assert.equal(calculatePlatformFeeCents(Number.MAX_SAFE_INTEGER, 10000), Number.MAX_SAFE_INTEGER);
+  assert.equal(calculatePlatformFeeCents(1, 5000), 1);
+  assert.equal(calculatePlatformFeeCents(1, 4999), 0);
 });

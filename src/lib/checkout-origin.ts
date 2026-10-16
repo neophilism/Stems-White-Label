@@ -1,5 +1,5 @@
 /**
- * Stripe return URLs must be based on the tenant-resolved Host header, not on
+ * Payment return URLs must be based on the tenant-resolved Host header, not on
  * an unchecked request.url that a reverse proxy may derive from forwarded data.
  * Call only after getCurrentTenant() has validated the tenant/hostname.
  */

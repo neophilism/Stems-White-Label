@@ -229,7 +229,7 @@ export function DemoExperience({
             <h2>Scale the operating envelope.</h2>
             <p>
               Presentation pricing for demonstration. Production billing remains
-              controlled by the Stripe Billing plan metadata configured by the operator.
+              controlled by the subscription billing plan metadata configured by the operator.
             </p>
           </div>
         </div>

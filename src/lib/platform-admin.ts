@@ -145,7 +145,7 @@ export async function updateTenantPlatformFee(input: {
 
     const before = await tx.tenantCommerce.findUnique({
       where: { tenantId: input.tenantId },
-      select: { id: true, platformFeeBps: true, stripeAccountId: true },
+      select: { id: true, platformFeeBps: true, providerAccountId: true },
     });
 
     const after = await tx.tenantCommerce.upsert({
@@ -155,7 +155,7 @@ export async function updateTenantPlatformFee(input: {
         platformFeeBps: fee,
       },
       update: { platformFeeBps: fee },
-      select: { id: true, platformFeeBps: true, stripeAccountId: true },
+      select: { id: true, platformFeeBps: true, providerAccountId: true },
     });
 
     await appendAudit(tx, {
@@ -555,7 +555,7 @@ export async function getPlatformTenantList() {
       },
       commerce: {
         select: {
-          stripeAccountId: true,
+          providerAccountId: true,
           chargesEnabled: true,
           payoutsEnabled: true,
           detailsSubmitted: true,

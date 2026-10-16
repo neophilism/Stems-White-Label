@@ -187,7 +187,8 @@ export async function createPendingOrder(
   accepted: boolean,
   buyerEmail: string | null,
   settlement?: {
-    stripeConnectedAccountId: string;
+    provider?: "AUTHORIZE_NET" | "SANDBOX";
+    providerAccountId: string;
     platformFeeCents: number;
   },
 ) {
@@ -201,7 +202,7 @@ export async function createPendingOrder(
       subtotalCents: quote.subtotalCents,
       totalCents: quote.subtotalCents,
       buyerEmail,
-      stripeConnectedAccountId: settlement?.stripeConnectedAccountId ?? null,
+      providerAccountId: settlement?.providerAccountId ?? null,
       platformFeeCents: settlement?.platformFeeCents ?? 0,
       termsAcceptedAt: new Date(),
       items: {
@@ -236,9 +237,9 @@ export async function createPendingOrder(
       payments: {
         create: {
           tenantId,
-          provider: "STRIPE",
+          provider: settlement?.provider ?? "AUTHORIZE_NET",
           status: "PENDING",
-          stripeConnectedAccountId: settlement?.stripeConnectedAccountId ?? null,
+          providerAccountId: settlement?.providerAccountId ?? null,
           platformFeeCents: settlement?.platformFeeCents ?? 0,
           amountCents: quote.subtotalCents,
           currency: quote.currency,

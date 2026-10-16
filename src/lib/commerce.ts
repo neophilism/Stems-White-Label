@@ -1,9 +1,10 @@
-import type Stripe from "stripe";
 
 import { db } from "@/lib/db";
+import { getPaymentGateway } from "@/lib/payment-gateway";
 
 export type CommerceAccountSnapshot = {
-  stripeAccountId: string;
+  providerAccountId: string;
+  provider?: "AUTHORIZE_NET" | "SANDBOX";
   country: string | null;
   defaultCurrency: string | null;
   chargesEnabled: boolean;
@@ -21,10 +22,10 @@ export function normalizeConnectCountry(value: unknown) {
   const country =
     typeof value === "string" && value.trim()
       ? value.trim().toUpperCase()
-      : (process.env.STRIPE_CONNECT_DEFAULT_COUNTRY ?? "US").trim().toUpperCase();
+      : (process.env.COMMERCE_DEFAULT_COUNTRY ?? "US").trim().toUpperCase();
 
   if (!/^[A-Z]{2}$/.test(country)) {
-    throw new Error("Stripe Connect country must be a two-letter ISO country code.");
+    throw new Error("Merchant country must be a two-letter ISO country code.");
   }
   return country;
 }
@@ -38,7 +39,7 @@ export function normalizePlatformFeeBps(value: unknown) {
 }
 
 export function platformFeeBpsFromEnv() {
-  return normalizePlatformFeeBps(process.env.STRIPE_PLATFORM_FEE_BPS ?? 0);
+  return normalizePlatformFeeBps(process.env.COMMERCE_PLATFORM_FEE_BPS ?? 0);
 }
 
 export function calculatePlatformFeeCents(amountCents: number, feeBps: number) {
@@ -46,53 +47,30 @@ export function calculatePlatformFeeCents(amountCents: number, feeBps: number) {
     throw new Error("Settlement amount must be a non-negative integer.");
   }
   const normalizedBps = normalizePlatformFeeBps(feeBps);
-  return Math.min(
-    amountCents,
-    Math.round((amountCents * normalizedBps) / 10000),
-  );
+  return Number((BigInt(amountCents) * BigInt(normalizedBps) + 5000n) / 10000n);
 }
 
 export function commerceReadiness(input: {
-  stripeAccountId: string | null;
+  providerAccountId: string | null;
   chargesEnabled: boolean;
   payoutsEnabled: boolean;
   detailsSubmitted: boolean;
   disabledReason: string | null;
 }) {
   const ready =
-    Boolean(input.stripeAccountId) &&
+    Boolean(input.providerAccountId) &&
     input.chargesEnabled &&
     input.payoutsEnabled &&
     input.detailsSubmitted &&
     !input.disabledReason;
 
   let status: "NOT_CONNECTED" | "ONBOARDING" | "RESTRICTED" | "READY";
-  if (!input.stripeAccountId) status = "NOT_CONNECTED";
+  if (!input.providerAccountId) status = "NOT_CONNECTED";
   else if (ready) status = "READY";
   else if (input.detailsSubmitted || input.disabledReason) status = "RESTRICTED";
   else status = "ONBOARDING";
 
   return { ready, status };
-}
-
-export function stripeAccountSnapshot(account: Stripe.Account): CommerceAccountSnapshot {
-  return {
-    stripeAccountId: account.id,
-    country: account.country ?? null,
-    defaultCurrency: account.default_currency ?? null,
-    chargesEnabled: account.charges_enabled,
-    payoutsEnabled: account.payouts_enabled,
-    detailsSubmitted: account.details_submitted,
-    disabledReason: account.requirements?.disabled_reason ?? null,
-    requirementsCurrentlyDue: account.requirements?.currently_due ?? [],
-    requirementsEventuallyDue: account.requirements?.eventually_due ?? [],
-    requirementsPastDue: account.requirements?.past_due ?? [],
-    requirementsPendingVerification:
-      account.requirements?.pending_verification ?? [],
-    accountCreatedAt: account.created
-      ? new Date(account.created * 1000)
-      : null,
-  };
 }
 
 export async function ensureTenantCommerce(tenantId: string) {
@@ -115,10 +93,10 @@ export async function persistTenantCommerceAccount(
   });
 
   if (
-    existing?.stripeAccountId &&
-    existing.stripeAccountId !== snapshot.stripeAccountId
+    existing?.provider !== "LEGACY" && existing?.providerAccountId &&
+    existing.providerAccountId !== snapshot.providerAccountId
   ) {
-    throw new Error("Tenant is already linked to a different Stripe account.");
+    throw new Error("Tenant is already linked to a different merchant account.");
   }
 
   const now = new Date();
@@ -126,7 +104,8 @@ export async function persistTenantCommerceAccount(
     where: { tenantId },
     create: {
       tenantId,
-      stripeAccountId: snapshot.stripeAccountId,
+      providerAccountId: snapshot.providerAccountId,
+      provider: snapshot.provider ?? "AUTHORIZE_NET",
       country: snapshot.country,
       defaultCurrency: snapshot.defaultCurrency,
       chargesEnabled: snapshot.chargesEnabled,
@@ -143,7 +122,8 @@ export async function persistTenantCommerceAccount(
       lastSyncedAt: now,
     },
     update: {
-      stripeAccountId: snapshot.stripeAccountId,
+      providerAccountId: snapshot.providerAccountId,
+      provider: snapshot.provider ?? "AUTHORIZE_NET",
       country: snapshot.country,
       defaultCurrency: snapshot.defaultCurrency,
       chargesEnabled: snapshot.chargesEnabled,
@@ -165,10 +145,12 @@ export async function persistTenantCommerceAccount(
 
 export async function getTenantCommerceState(tenantId: string) {
   const commerce = await ensureTenantCommerce(tenantId);
-  return {
-    ...commerce,
-    ...commerceReadiness(commerce),
-  };
+  let readiness = commerceReadiness(commerce);
+  try {
+    const gateway = getPaymentGateway(tenantId);
+    if (commerce.provider !== gateway.provider || commerce.providerAccountId !== gateway.accountId || (!gateway.supportsSplitSettlement && commerce.platformFeeBps !== 0)) readiness = { ready: false, status: "RESTRICTED" };
+  } catch { readiness = { ready: false, status: commerce.providerAccountId ? "RESTRICTED" : "NOT_CONNECTED" }; }
+  return { ...commerce, ...readiness };
 }
 
 export async function getTenantCommerceForCheckout(
@@ -184,14 +166,22 @@ export async function getTenantCommerceForCheckout(
   }
 
   const readiness = commerceReadiness(commerce);
-  if (!readiness.ready || !commerce.stripeAccountId) {
+  if (!readiness.ready || !commerce.providerAccountId) {
     throw new Error(
       "This storefront is not currently ready to accept payments. Please try again later.",
     );
   }
 
+  if (commerce.provider === "LEGACY") throw new Error("Merchant account must be migrated before checkout.");
+
+  {
+    const gateway = getPaymentGateway(tenantId);
+    if (commerce.provider !== gateway.provider || commerce.providerAccountId !== gateway.accountId) throw new Error("Merchant configuration does not match the storefront.");
+    if (!gateway.supportsSplitSettlement && commerce.platformFeeBps !== 0) throw new Error("Merchant does not support platform fee splits.");
+  }
   return {
-    stripeAccountId: commerce.stripeAccountId,
+    provider: commerce.provider,
+    providerAccountId: commerce.providerAccountId,
     platformFeeBps: commerce.platformFeeBps,
     platformFeeCents: calculatePlatformFeeCents(
       totalCents,

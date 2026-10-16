@@ -70,16 +70,16 @@ async function main() {
       true,
       "buyer@example.com",
       {
-        stripeConnectedAccountId: "acct_checkout_validation",
+        providerAccountId: "acct_checkout_validation",
         platformFeeCents: 625,
       },
     );
     assert.equal(order.status, "PENDING");
     assert.equal(order.items[0]?.termsTextSnapshot, "Immutable checkout terms.");
-    assert.equal(order.stripeConnectedAccountId, "acct_checkout_validation");
+    assert.equal(order.providerAccountId, "acct_checkout_validation");
     assert.equal(order.platformFeeCents, 625);
     assert.equal(order.payments[0]?.status, "PENDING");
-    assert.equal(order.payments[0]?.stripeConnectedAccountId, "acct_checkout_validation");
+    assert.equal(order.payments[0]?.providerAccountId, "acct_checkout_validation");
     assert.equal(order.payments[0]?.platformFeeCents, 625);
 
     await db.licenseVersion.update({
@@ -105,20 +105,22 @@ async function main() {
     assert.equal(stored.termsTextSnapshot, "Immutable checkout terms.");
 
     const paid = await markOrderPaid({
+      amountCents: order.totalCents, currency: order.currency,
       orderId: order.id,
       email: "Buyer@Example.com",
-      stripeCustomerId: "cus_validation",
-      stripePaymentIntentId: "pi_validation",
+      providerCustomerId: "cus_validation",
+      providerTransactionId: "pi_validation",
     });
     assert.equal(paid.status, "PAID");
     assert.equal(paid.customer?.normalizedEmail, "buyer@example.com");
     assert.equal(paid.items[0]?.purchaseLicense?.licenseVersionId, stored.licenseVersionId);
 
     const paidAgain = await markOrderPaid({
+      amountCents: order.totalCents, currency: order.currency,
       orderId: order.id,
       email: "Buyer@Example.com",
-      stripeCustomerId: "cus_validation",
-      stripePaymentIntentId: "pi_validation",
+      providerCustomerId: "cus_validation",
+      providerTransactionId: "pi_validation",
     });
     const grants = await db.purchaseLicense.count({ where: { orderId: order.id } });
     const entitlements = await db.downloadEntitlement.findMany({
@@ -148,6 +150,42 @@ async function main() {
     });
     assert.ok(revoked.revokedAt);
     assert.equal(revoked.revocationReason, "Order fully refunded.");
+
+    // A duplicate payment webhook must never restore download rights after refund.
+    await assert.rejects(
+      () => markOrderPaid({
+      amountCents: order.totalCents, currency: order.currency,
+        orderId: order.id,
+        email: "Buyer@Example.com",
+        providerCustomerId: "cus_validation",
+        providerTransactionId: "pi_validation",
+      }),
+      /refunded order/,
+    );
+    await assert.rejects(
+      () => recordRefund({
+        orderId: order.id,
+        providerRefundId: "re_partial_validation",
+        amountCents: 2501,
+      }),
+      /provider refund ID/,
+    );
+    await assert.rejects(
+      () => recordRefund({
+        orderId: order.id,
+        providerRefundId: "re_over_validation",
+        amountCents: 1,
+      }),
+      /Refund exceeds/,
+    );
+    const untouchedRefund = await db.refund.findUniqueOrThrow({
+      where: { provider_accountId_providerRefundId: { provider: "AUTHORIZE_NET", accountId: "acct_checkout_validation", providerRefundId: "re_partial_validation" } },
+    });
+    assert.equal(untouchedRefund.amountCents, 2500);
+    const stillRevoked = await db.purchaseLicense.findFirstOrThrow({
+      where: { orderId: order.id },
+    });
+    assert.ok(stillRevoked.revokedAt);
 
     console.log("Checkout/order database integration validation passed.");
   } finally {

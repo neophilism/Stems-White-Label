@@ -11,7 +11,7 @@ The next changes are tracked as separate delivery and acceptance gates:
 - PR 23: Engine Room-approved project manifest, public recurring live smoke test.
 - PR 24: security and operations controls, including high-risk routes and webhooks.
 - PR 25: deployment and worker instrumentation, alert thresholds and monitoring.
-- PR 26: Stripe Commerce and license delivery end-to-end verification.
+- PR 26: payment provider Commerce and license delivery end-to-end verification.
 - PR 27: Unsealed Records flagship real music catalog and creator onboarding.
 - PR 28: multi-tenant integration, regression and accessibility acceptance.
 - PR 29: provider cutover, private audio storage, durable workers, backups and domain.
