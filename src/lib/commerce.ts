@@ -47,10 +47,7 @@ export function calculatePlatformFeeCents(amountCents: number, feeBps: number) {
     throw new Error("Settlement amount must be a non-negative integer.");
   }
   const normalizedBps = normalizePlatformFeeBps(feeBps);
-  return Math.min(
-    amountCents,
-    Math.round((amountCents * normalizedBps) / 10000),
-  );
+  return Number((BigInt(amountCents) * BigInt(normalizedBps) + 5000n) / 10000n);
 }
 
 export function commerceReadiness(input: {

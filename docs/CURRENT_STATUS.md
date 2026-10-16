@@ -23,14 +23,13 @@ This checkpoint is development code, not a deployed or commercially accepted rel
 
 ## Verified locally
 
-117 unit tests passed. TypeScript verification passed. The production build passed
-before the latest security test additions; final CI is required on the published
-head. Full migration history plus populated legacy payment/refund/customer/event
+119 unit tests passed. TypeScript verification passed. The production build passed
+on the published implementation head; final CI is required after subsequent changes. Full migration history plus populated legacy payment/refund/customer/event
 preservation passed in an embedded PostgreSQL engine. GitHub run 38940373251 has passed all real PostgreSQL integration suites, including
 concurrent refund/callback isolation and real media/package processing. Built HTTP
-security initially failed a sibling-host assertion; the test now uses a raw HTTP
-transport to ensure the intended Host header is transmitted, and requires rerun. Container build and runtime smoke
-checks have now been added and require a result on the subsequent head.
+security initially failed a sibling-host assertion because of its fetch transport.
+The corrected raw-HTTP test passed all role, tenant, origin and callback checks
+in GitHub run 38940814094. Container build, non-root Prisma runtime and FFmpeg/ffprobe smoke checks passed in GitHub run 38940814094.
 
 ## Remote state and remaining work
 

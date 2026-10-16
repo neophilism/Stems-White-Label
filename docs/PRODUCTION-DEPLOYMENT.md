@@ -79,8 +79,9 @@ irreversible schema/data migrations automatically.
 FFmpeg/ffprobe and a non-root runtime user. It uses an init process so termination
 signals reach workers and child audio processes. It includes the TypeScript
 runtime and Prisma CLI because existing runtime scripts require them. No secrets
-are accepted as build arguments. Container build execution is separately required;
-this environment has no Docker daemon, so source review is not a built-image test.
+are accepted as build arguments. GitHub run 38940814094 built the container and verified the non-root Prisma
+runtime and FFmpeg/ffprobe binaries. Runtime queue acceptance still requires an
+appropriately configured environment.
 
 The default container starts HTTP only, without automatic migrations. Apply the
 coordinated commerce migration with a single migration actor before deploying

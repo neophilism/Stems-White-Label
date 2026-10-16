@@ -187,8 +187,8 @@ export async function recordRefund(input: {
   amountCents: number;
   reason?: string | null;
 }, transaction?: Prisma.TransactionClient) {
-  if (!Number.isSafeInteger(input.amountCents) || input.amountCents < 0) {
-    throw new Error("Refund amount must be a non-negative integer.");
+  if (!Number.isSafeInteger(input.amountCents) || input.amountCents <= 0) {
+    throw new Error("Refund amount must be a positive integer.");
   }
 
   return paymentTransaction(async (tx) => {

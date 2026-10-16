@@ -72,3 +72,10 @@ test("unsubscribed and terminal subscriptions fail closed", () => {
     );
   }
 });
+
+
+test("trial and paid periods expire even when the next provider notification is delayed", () => {
+  const now = new Date("2026-10-16T12:00:00Z");
+  assert.equal(subscriptionAccessState({ status: "TRIALING", pastDueGraceUntil: null, trialEnd: new Date("2026-10-16T11:59:59Z") }, now).allowed, false);
+  assert.equal(subscriptionAccessState({ status: "ACTIVE", pastDueGraceUntil: null, currentPeriodEnd: new Date("2026-10-16T11:59:59Z") }, now).allowed, false);
+});

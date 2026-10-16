@@ -62,3 +62,10 @@ test("commerce is ready only after onboarding, charges, and payouts are ready", 
     { ready: true, status: "READY" },
   );
 });
+
+
+test("platform fee rounding stays exact across the supported integer range", () => {
+  assert.equal(calculatePlatformFeeCents(Number.MAX_SAFE_INTEGER, 10000), Number.MAX_SAFE_INTEGER);
+  assert.equal(calculatePlatformFeeCents(1, 5000), 1);
+  assert.equal(calculatePlatformFeeCents(1, 4999), 0);
+});
