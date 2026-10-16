@@ -72,3 +72,30 @@ Retain previous healthy image/commit, track migration compatibility, disable
 checkout first if payment reconciliation is impaired, and roll back the web
 service only when database changes are backward compatible. Do not reverse
 irreversible schema/data migrations automatically.
+
+## Prepared container and worker configuration
+
+`Dockerfile` builds the web, asset and package-worker code at one commit with
+FFmpeg/ffprobe and a non-root runtime user. It uses an init process so termination
+signals reach workers and child audio processes. It includes the TypeScript
+runtime and Prisma CLI because existing runtime scripts require them. No secrets
+are accepted as build arguments. Container build execution is separately required;
+this environment has no Docker daemon, so source review is not a built-image test.
+
+The default container starts HTTP only, without automatic migrations. Apply the
+coordinated commerce migration with a single migration actor before deploying
+matching code. For the current native Node web service use `npm ci && npm run build`
+and `npm start -- --hostname 0.0.0.0 --port $PORT`; its prestart migration/bootstrap
+behavior remains unchanged. A real cutover must drain and stop the old app first.
+
+`deploy/render-workers.yaml` is a review-only Blueprint for two separate workers,
+not an already applied deployment. Render workers require a paid plan; no new paid
+resource was created. Before applying, supply the approved `stems-private-media`
+environment group with `DATABASE_URL`, `OBJECT_STORAGE_BUCKET`,
+`OBJECT_STORAGE_REGION`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_ACCESS_KEY_ID`,
+`OBJECT_STORAGE_SECRET_ACCESS_KEY` and `OBJECT_STORAGE_FORCE_PATH_STYLE` matching
+the intended isolated test environment. Do not include web authentication,
+merchant or billing credentials in this worker group. Review and approve worker
+cost before provisioning; then build both workers from the exact accepted web
+commit, run the existing real media/package integration suites and verify queue
+claims, recovery and graceful shutdown in that environment.

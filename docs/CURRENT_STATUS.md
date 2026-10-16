@@ -1,6 +1,9 @@
 # STEMS implementation checkpoint — October 16, 2026
 
-Branch: `feat/commerce-gateway-20261016`, based on PR #34's tested head.
+Branch: `feat/commerce-gateway-20261016`, PR #35:
+https://github.com/neophilism/Stems-White-Label/pull/35
+
+Based on PR #34's tested head, with current main's canonical registry preserved.
 This checkpoint is development code, not a deployed or commercially accepted release.
 
 ## Delivered on this branch
@@ -23,8 +26,11 @@ This checkpoint is development code, not a deployed or commercially accepted rel
 117 unit tests passed. TypeScript verification passed. The production build passed
 before the latest security test additions; final CI is required on the published
 head. Full migration history plus populated legacy payment/refund/customer/event
-preservation passed in an embedded PostgreSQL engine. Full PostgreSQL and built
-HTTP tests are defined for CI; their result must be recorded after execution.
+preservation passed in an embedded PostgreSQL engine. GitHub run 38940373251 has passed all real PostgreSQL integration suites, including
+concurrent refund/callback isolation and real media/package processing. Built HTTP
+security initially failed a sibling-host assertion; the test now uses a raw HTTP
+transport to ensure the intended Host header is transmitted, and requires rerun. Container build and runtime smoke
+checks have now been added and require a result on the subsequent head.
 
 ## Remote state and remaining work
 
@@ -43,6 +49,9 @@ commercial fund flows are verified. The included direct-merchant adapter does no
 provide automatic marketplace split fees, provider-initiated bank payouts,
 in-app invoice archives or seamless subscription plan changes. Preserve those
 requirements in the remaining roadmap; do not mark the entire platform complete.
+
+Prepared deployment assets: non-root FFmpeg container and review-only two-worker
+Render Blueprint (`deploy/render-workers.yaml`). No paid workers were provisioned.
 
 Remaining deployment work: separate audio/package workers with FFmpeg, real private
 object storage and catalog provenance, isolated database/backup restore tests,

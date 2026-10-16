@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { request as httpRequest } from 'node:http';
 import { PrismaClient } from '@prisma/client';
 
 const db = new PrismaClient();
@@ -27,9 +28,17 @@ try {
     if (await fetch(base + '/api/health').then(r => r.ok, () => false)) break;
     await new Promise(r => setTimeout(r, 200));
   }
-  const call = (path, token, customHost = host, extra = {}) => fetch(base + path, { redirect: 'manual', ...extra, headers: {
-    host: customHost, ...(token ? { cookie: 'next-auth.session-token=' + token + '; __Secure-next-auth.session-token=' + token } : {}), ...extra.headers,
-  } });
+  // Use the raw HTTP client: fetch implementations can normalize a supplied Host.
+  // Tenant-isolation tests must send the intended host header on the wire.
+  const call = (path, token, customHost = host, extra = {}) => new Promise((resolve, reject) => {
+    const request = httpRequest(base + path, { method: extra.method || 'GET', headers: {
+      Host: customHost, ...(token ? { Cookie: 'next-auth.session-token=' + token + '; __Secure-next-auth.session-token=' + token } : {}), ...extra.headers,
+    } }, response => {
+      const chunks = []; response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => resolve({ status: response.statusCode, text: async () => Buffer.concat(chunks).toString('utf8') }));
+    });
+    request.on('error', reject); request.end(extra.body);
+  });
   assert.equal((await call('/api/admin/commerce')).status, 401);
   assert.equal((await call('/api/admin/commerce', viewerToken)).status, 401);
   const ownerResponse = await call('/api/admin/commerce', ownerToken);

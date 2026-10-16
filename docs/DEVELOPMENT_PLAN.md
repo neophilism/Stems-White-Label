@@ -1,6 +1,6 @@
 > October 16 commerce checkpoint and remaining gaps: [CURRENT_STATUS.md](CURRENT_STATUS.md), [COMMERCE-GATEWAYS.md](COMMERCE-GATEWAYS.md). Issue #28 remains open pending actual provider and requested settlement acceptance.
 
-> **Canonical PR roadmap and Engine Room tracking:** [`registry/roadmap.json`](../registry/roadmap.json). This original detailed plan is preserved; new PR mappings and planned-work totals belong in the canonical file.
+> **Canonical PR roadmap and Engine Room tracking:** [`registry/prs.json`](../registry/prs.json). This original detailed plan is preserved; new PR mappings and planned-work totals belong in the canonical file.
 
 # Stems White Label — recovered original 20-PR plan + approved 30-PR expansion
 
