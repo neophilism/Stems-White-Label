@@ -1,3 +1,4 @@
+import { validateSecurityHttp } from "./validate-security-http";
 import { validateWebhookSecurity } from "./validate-webhook-security";
 import assert from "node:assert/strict";
 import Stripe from "stripe";
@@ -229,6 +230,7 @@ async function main() {
       await db.stripeWebhookEvent.deleteMany({ where: { providerEventId: eventId } });
     }
     await validateWebhookSecurity(suffix);
+    await validateSecurityHttp(suffix);
     console.log("Checkout/order database integration validation passed, including signed payments/billing/connect replay/concurrency/rollback security cases.");
   } finally {
     await db.stripeWebhookEvent.deleteMany({ where: { providerEventId: { in: signedEventIds } } });
