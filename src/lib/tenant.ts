@@ -5,12 +5,11 @@ import { db } from "@/lib/db";
 import { matchesManagedPlatformHost } from "@/lib/managed-host";
 
 export function normalizeHostname(value: string) {
-  return value
-    .split(",")[0]!
-    .trim()
-    .toLowerCase()
-    .replace(/:\d+$/, "")
-    .replace(/\.$/, "");
+  const host = value.trim().toLowerCase();
+  if (/[\\s,/@\\\\?#]/.test(host)) return "";
+  const normalized = host.replace(/:443$/, "").replace(/\\.$/, "");
+  if (!/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/.test(normalized) || normalized.includes("..")) return "";
+  return normalized;
 }
 
 export async function resolveTenantByHostnameDirect(hostname: string) {
