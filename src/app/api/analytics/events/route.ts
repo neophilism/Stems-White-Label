@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
+          error instanceof Error && error.message === "Unsupported analytics event type."
             ? error.message
             : "Unable to record analytics event.",
       },
