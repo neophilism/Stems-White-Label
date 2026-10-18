@@ -1,8 +1,9 @@
 import Stripe from "stripe";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { recordPurchaseAnalytics } from "@/lib/analytics";
-import { db } from "@/lib/db";
+import { processStripeWebhookOnce } from "@/lib/stripe-webhook";
 import { markOrderPaid, markOrderPaymentFailed, recordRefund } from "@/lib/payments";
 import { getStripe, getStripeWebhookSecret } from "@/lib/stripe";
 
@@ -10,16 +11,16 @@ function stringId(value: string | { id: string } | null | undefined) {
   return typeof value === "string" ? value : value?.id ?? null;
 }
 
-async function orderIdFromPaymentIntent(paymentIntentId: string | null) {
+async function orderIdFromPaymentIntent(tx: Prisma.TransactionClient, paymentIntentId: string | null) {
   if (!paymentIntentId) return null;
-  const order = await db.order.findUnique({
+  const order = await tx.order.findUnique({
     where: { stripePaymentIntentId: paymentIntentId },
     select: { id: true },
   });
   return order?.id ?? null;
 }
 
-async function processEvent(event: Stripe.Event) {
+async function processEvent(event: Stripe.Event, tx: Prisma.TransactionClient) {
   switch (event.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded": {
@@ -27,7 +28,7 @@ async function processEvent(event: Stripe.Event) {
       const orderId = session.metadata?.orderId;
       if (!orderId) return;
 
-      if (session.payment_status !== "paid" && event.type === "checkout.session.completed") {
+      if (session.payment_status !== "paid") {
         return;
       }
 
@@ -40,10 +41,15 @@ async function processEvent(event: Stripe.Event) {
         customerName: session.customer_details?.name ?? null,
         stripeCustomerId: stringId(session.customer),
         stripePaymentIntentId: stringId(session.payment_intent),
-      });
-      await recordPurchaseAnalytics(orderId).catch((analyticsError) => {
-        console.error("Unable to record purchase analytics", analyticsError);
-      });
+        checkoutEvidence: {
+          sessionId: session.id,
+          tenantId: session.metadata?.tenantId ?? null,
+          amountTotal: session.amount_total,
+          currency: session.currency,
+          mode: session.mode,
+          paymentStatus: session.payment_status,
+        },
+      }, tx);
       return;
     }
 
@@ -51,7 +57,7 @@ async function processEvent(event: Stripe.Event) {
       const session = event.data.object as Stripe.Checkout.Session;
       const orderId = session.metadata?.orderId;
       if (!orderId) return;
-      await db.order.updateMany({
+      await tx.order.updateMany({
         where: {
           id: orderId,
           status: { in: ["PENDING", "CHECKOUT_CREATED", "PAYMENT_FAILED"] },
@@ -69,21 +75,21 @@ async function processEvent(event: Stripe.Event) {
         orderId,
         stripePaymentIntentId: stringId(session.payment_intent),
         failureMessage: "Stripe Checkout reported asynchronous payment failure.",
-      });
+      }, tx);
       return;
     }
 
     case "payment_intent.payment_failed": {
       const intent = event.data.object as Stripe.PaymentIntent;
       const orderId =
-        intent.metadata?.orderId ?? (await orderIdFromPaymentIntent(intent.id));
+        intent.metadata?.orderId ?? (await orderIdFromPaymentIntent(tx, intent.id));
       if (!orderId) return;
       await markOrderPaymentFailed({
         orderId,
         stripePaymentIntentId: intent.id,
         failureCode: intent.last_payment_error?.code ?? null,
         failureMessage: intent.last_payment_error?.message ?? null,
-      });
+      }, tx);
       return;
     }
 
@@ -92,14 +98,14 @@ async function processEvent(event: Stripe.Event) {
       const refund = event.data.object as Stripe.Refund;
       if (refund.status !== "succeeded") return;
       const paymentIntentId = stringId(refund.payment_intent);
-      const orderId = await orderIdFromPaymentIntent(paymentIntentId);
+      const orderId = await orderIdFromPaymentIntent(tx, paymentIntentId);
       if (!orderId) return;
       await recordRefund({
         orderId,
         providerRefundId: refund.id,
         amountCents: refund.amount,
         reason: refund.reason ?? null,
-      });
+      }, tx);
       return;
     }
   }
@@ -126,28 +132,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const alreadyProcessed = await db.stripeWebhookEvent.findUnique({
-    where: {
-      scope_providerEventId: {
-        scope: "PAYMENTS",
-        providerEventId: event.id,
-      },
-    },
-  });
-  if (alreadyProcessed) return NextResponse.json({ received: true, duplicate: true });
-
   try {
-    await processEvent(event);
-    await db.stripeWebhookEvent.create({
-      data: {
-        scope: "PAYMENTS",
-        providerEventId: event.id,
-        eventType: event.type,
-      },
-    }).catch(() => undefined);
-    return NextResponse.json({ received: true });
+    const result = await processStripeWebhookOnce("PAYMENTS", event, (tx) => processEvent(event, tx));
+    if (!result.duplicate && ["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type)) {
+      const session = event.data.object as Stripe.Checkout.Session;
+      if (session.payment_status === "paid" && session.metadata?.orderId) {
+        await recordPurchaseAnalytics(session.metadata.orderId).catch(() => {
+          console.error("Unable to record purchase analytics");
+        });
+      }
+    }
+    return NextResponse.json({ received: true, ...result });
   } catch {
-    console.error("Stripe webhook processing failed", { eventId: event.id });
+    console.error("Stripe webhook processing failed");
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }

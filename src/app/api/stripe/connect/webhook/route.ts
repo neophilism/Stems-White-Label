@@ -30,16 +30,8 @@ export async function POST(request: Request) {
       signature,
       getStripeConnectWebhookSecret(),
     );
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invalid Stripe Connect webhook.",
-      },
-      { status: 400 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Invalid Stripe Connect webhook." }, { status: 400 });
   }
 
   const duplicate = await db.stripeWebhookEvent.findUnique({
@@ -80,7 +72,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Stripe Connect webhook processing failed", event.id, error);
+    console.error("Stripe Connect webhook processing failed");
     return NextResponse.json(
       { error: "Connect webhook processing failed." },
       { status: 500 },

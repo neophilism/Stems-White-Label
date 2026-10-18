@@ -79,16 +79,8 @@ export async function POST(request: Request) {
       signature,
       getStripeBillingWebhookSecret(),
     );
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Invalid Stripe Billing webhook.",
-      },
-      { status: 400 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Invalid Stripe Billing webhook." }, { status: 400 });
   }
 
   const duplicate = await db.stripeWebhookEvent.findUnique({
@@ -111,11 +103,11 @@ export async function POST(request: Request) {
         providerEventId: event.id,
         eventType: event.type,
       },
-    }).catch(() => undefined);
+    });
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Stripe Billing webhook processing failed", event.id, error);
+    console.error("Stripe Billing webhook processing failed");
     return NextResponse.json(
       { error: "Billing webhook processing failed." },
       { status: 500 },
