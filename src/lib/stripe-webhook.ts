@@ -21,5 +21,5 @@ export async function processStripeWebhookOnce(
       data: { scope, providerEventId: event.id, eventType: event.type },
     });
     return { duplicate: false };
-  });
+  }, { timeout: 30000, maxWait: 5000 });
 }
