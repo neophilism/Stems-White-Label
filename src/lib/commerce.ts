@@ -202,3 +202,12 @@ export async function getTenantCommerceForCheckout(
     ),
   };
 }
+
+/** Refresh is a return from an owner-started onboarding flow, not an initiation endpoint. */
+export function onboardingRefreshAllowed(state: {
+  stripeAccountId: string | null;
+  onboardingStartedAt: Date | null;
+} | null, now = new Date()) {
+  const age = state?.onboardingStartedAt ? now.getTime() - state.onboardingStartedAt.getTime() : -1;
+  return Boolean(state?.stripeAccountId) && age >= 0 && age <= 30 * 60 * 1000;
+}

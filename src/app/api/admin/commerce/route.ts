@@ -1,3 +1,4 @@
+import { checkoutReturnOrigin } from "@/lib/checkout-origin";
 import { publicOperationError } from "@/lib/public-operation-error";
 import { NextResponse } from "next/server";
 
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
 
   try {
     if (action === "start-onboarding") {
-      const origin = new URL(request.url).origin;
+      const origin = checkoutReturnOrigin(request.url, request.headers.get("host"), process.env.NODE_ENV === "production");
       const url = await createConnectedAccountOnboardingLink({
         tenantId: access.tenant.id,
         email: access.session.user?.email ?? null,

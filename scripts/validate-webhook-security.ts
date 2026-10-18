@@ -30,7 +30,7 @@ export async function validateWebhookSecurity(suffix: string) {
     assert.equal(id, subscriptionId);
     if (providerFailure) throw new Error("Provider diagnostics with secret and customer data");
     return subscription();
-  }) as typeof stripe.subscriptions.retrieve;
+  }) as unknown as typeof stripe.subscriptions.retrieve;
   stripe.prices.retrieve = (async () => ({
     id: "price_security", type: "recurring", active: true, unit_amount: 1000,
     currency: "usd", recurring: { interval: "month", interval_count: 1 },
@@ -38,12 +38,12 @@ export async function validateWebhookSecurity(suffix: string) {
       stems_plan_key: "security", stems_max_works: "10", stems_max_storage_bytes: "1000000",
       stems_max_custom_domains: "1", stems_max_members: "3", stems_allow_custom_domains: "true", stems_allow_white_label: "true",
     } },
-  })) as typeof stripe.prices.retrieve;
+  })) as unknown as typeof stripe.prices.retrieve;
   stripe.accounts.retrieve = (async (id: string) => {
     assert.equal(id, accountId); accountReads++;
     if (providerFailure) throw new Error("Provider diagnostics with secret and customer data");
     return { id: accountId, country: "US", default_currency: "usd", charges_enabled: true, payouts_enabled: true, details_submitted: true, requirements: {}, created: 1790000000 };
-  }) as typeof stripe.accounts.retrieve;
+  }) as unknown as typeof stripe.accounts.retrieve;
   async function deliver(scope: "billing" | "connect", id: string, type: string, object: unknown) {
     ids.push(id);
     const payload = JSON.stringify({ id, type, data: { object } });
