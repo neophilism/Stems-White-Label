@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { readWebhookBody } from "@/lib/webhook-body";
 import { NextResponse } from "next/server";
 
 import { db } from "@/lib/db";
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    const rawBody = await request.text();
+    const rawBody = await readWebhookBody(request);
     event = getStripe().webhooks.constructEvent(
       rawBody,
       signature,

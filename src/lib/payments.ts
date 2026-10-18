@@ -201,6 +201,7 @@ export async function markOrderPaymentFailed(input: {
 export async function recordRefund(input: {
   orderId: string;
   providerRefundId: string;
+  stripePaymentIntentId?: string | null;
   amountCents: number;
   reason?: string | null;
 }, transaction?: Prisma.TransactionClient) {
@@ -217,6 +218,9 @@ export async function recordRefund(input: {
     if (!order) throw new Error("Order not found.");
     const payment = order.payments[0];
     if (!payment) throw new Error("Order payment not found.");
+    if (input.stripePaymentIntentId && order.stripePaymentIntentId !== input.stripePaymentIntentId) {
+      throw new Error("Refund payment intent does not match order.");
+    }
 
     if (!["PAID", "PARTIALLY_REFUNDED", "REFUNDED"].includes(order.status)) {
       throw new Error("Cannot refund an unpaid order.");

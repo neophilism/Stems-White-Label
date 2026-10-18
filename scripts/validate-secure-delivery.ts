@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 
+import { resolveCustomerForIdentity } from "../src/lib/customer-identity";
 import { db } from "../src/lib/db";
 import { createPendingOrder, quoteLicenseProducts } from "../src/lib/checkout";
 import {
@@ -15,6 +16,11 @@ async function main() {
     data: { name: "Delivery Validation " + suffix, slug: "delivery-validation-" + suffix },
   });
 
+  const otherTenant = await db.tenant.create({ data: { name: "Other delivery tenant", slug: "delivery-other-" + suffix } });
+  const users = await Promise.all([
+    db.user.create({ data: { email: "delivery@example.com" } }),
+    db.user.create({ data: { email: "other-" + suffix + "@example.com", emailVerified: new Date() } }),
+  ]);
   try {
     const work = await db.work.create({
       data: {
@@ -80,6 +86,21 @@ async function main() {
     assert.equal(purchase.downloadEntitlements.length, 1);
     assert.equal(purchase.downloadEntitlements[0]?.audioAssetId, asset.id);
 
+    // Automatic purchase linking requires verified email and the correct tenant.
+    assert.equal(await resolveCustomerForIdentity(tenant.id, users[0]!.id), null);
+    assert.equal(await resolveCustomerForIdentity(tenant.id, users[1]!.id), null);
+    await db.user.update({ where: { id: users[0]!.id }, data: { emailVerified: new Date() } });
+    assert.equal(await resolveCustomerForIdentity(otherTenant.id, users[0]!.id), null);
+    const linked = await Promise.all(Array.from({ length: 3 }, () => resolveCustomerForIdentity(tenant.id, users[0]!.id)));
+    assert.ok(linked.every((entry) => entry?.id === customer.id));
+    // A customer explicitly linked to another principal cannot be reassigned by email.
+    await db.customer.update({ where: { id: customer.id }, data: { userId: users[1]!.id } });
+    assert.equal(await resolveCustomerForIdentity(tenant.id, users[0]!.id), null);
+    assert.equal((await db.customer.findUniqueOrThrow({ where: { id: customer.id } })).userId, users[1]!.id);
+    await db.customer.update({ where: { id: customer.id }, data: { userId: users[0]!.id } });
+
+    await assert.rejects(requestDownloadPackage({ tenantId: otherTenant.id, customerId: customer.id, purchaseLicenseId: purchase.id }));
+    await assert.rejects(requestDownloadPackage({ tenantId: tenant.id, customerId: "wrong-customer", purchaseLicenseId: purchase.id }));
     const queued = await requestDownloadPackage({
       tenantId: tenant.id,
       customerId: customer.id,
@@ -114,6 +135,8 @@ async function main() {
   } finally {
     await db.order.deleteMany({ where: { tenantId: tenant.id } });
     await db.tenant.delete({ where: { id: tenant.id } }).catch(() => undefined);
+    await db.tenant.delete({ where: { id: otherTenant.id } });
+    await db.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
     await db.$disconnect();
   }
 }

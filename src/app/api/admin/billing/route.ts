@@ -1,3 +1,4 @@
+import { publicOperationError } from "@/lib/public-operation-error";
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
@@ -59,9 +60,7 @@ export async function GET() {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Unable to load SaaS billing.",
+          publicOperationError(error, "Unable to load SaaS billing."),
       },
       { status: 500 },
     );
@@ -112,9 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Unable to update SaaS billing.",
+          publicOperationError(error, "Unable to update SaaS billing."),
       },
       { status: 400 },
     );

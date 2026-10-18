@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import Stripe from "stripe";
+import { POST as paymentWebhook } from "../src/app/api/stripe/webhook/route";
 
 import { processStripeWebhookOnce } from "../src/lib/stripe-webhook";
 import { db } from "../src/lib/db";
@@ -7,6 +9,14 @@ import { markOrderPaid, markOrderPaymentFailed, recordRefund } from "../src/lib/
 
 async function main() {
   const suffix = Date.now().toString(36);
+  process.env.STRIPE_SECRET_KEY = "sk_test_offline_security_fixture";
+  process.env.STRIPE_WEBHOOK_SECRET = "whsec_offline_security_fixture";
+  const signedEventIds: string[] = [];
+  async function deliver(event: Record<string, unknown>) {
+    const payload = JSON.stringify(event);
+    const signature = Stripe.webhooks.generateTestHeaderString({ payload, secret: process.env.STRIPE_WEBHOOK_SECRET! });
+    return paymentWebhook(new Request("https://store.example/api/stripe/webhook", { method: "POST", body: payload, headers: { "stripe-signature": signature } }));
+  }
   const tenant = await db.tenant.create({
     data: { name: "Checkout Validation " + suffix, slug: "checkout-validation-" + suffix },
   });
@@ -113,6 +123,24 @@ async function main() {
     assert.equal(await db.customer.count({ where: { tenantId: tenant.id } }), 0);
     assert.equal(await db.purchaseLicense.count({ where: { orderId: order.id } }), 0);
 
+    const signedEventId = "evt_signed_" + suffix;
+    signedEventIds.push(signedEventId);
+    const session = {
+      id: paymentEvidence.sessionId, mode: "payment", payment_status: "paid",
+      currency: "usd", amount_total: 12500, customer: "cus_validation",
+      customer_details: { email: "buyer@example.com", name: "Buyer" },
+      payment_intent: "pi_" + suffix, metadata: { orderId: order.id, tenantId: tenant.id },
+    };
+    const signed = { id: signedEventId, type: "checkout.session.completed", data: { object: session } };
+    const mismatched = await deliver({ ...signed, data: { object: { ...session, amount_total: 1 } } });
+    assert.equal(mismatched.status, 500);
+    assert.deepEqual(await mismatched.json(), { error: "Webhook processing failed." });
+    assert.equal(await db.stripeWebhookEvent.count({ where: { providerEventId: signedEventId } }), 0);
+    const signedResults = await Promise.all(Array.from({ length: 4 }, () => deliver(signed)));
+    const signedBodies = await Promise.all(signedResults.map((response) => response.json()));
+    assert.ok(signedResults.every((response) => response.status === 200));
+    assert.equal(signedBodies.filter((body) => body.duplicate === false).length, 1);
+
     const paid = await markOrderPaid({
       orderId: order.id,
       email: "Buyer@Example.com",
@@ -169,6 +197,9 @@ async function main() {
     assert.ok(revoked.revokedAt);
     assert.equal(revoked.revocationReason, "Order fully refunded.");
 
+    const lateSuccessId = "evt_late_success_" + suffix;
+    signedEventIds.push(lateSuccessId);
+    assert.equal((await deliver({ ...signed, id: lateSuccessId })).status, 200);
     const revokedAt = revoked.revokedAt!.getTime();
     await Promise.all([
       markOrderPaid({ orderId: order.id, email: "buyer@example.com", stripePaymentIntentId: "pi_" + suffix }),
@@ -198,6 +229,7 @@ async function main() {
     }
     console.log("Checkout/order database integration validation passed, including replay/concurrency/rollback security cases.");
   } finally {
+    await db.stripeWebhookEvent.deleteMany({ where: { providerEventId: { in: signedEventIds } } });
     await db.order.deleteMany({ where: { tenantId: tenant.id } });
     await db.tenant.delete({ where: { id: tenant.id } }).catch(() => undefined);
     await db.$disconnect();

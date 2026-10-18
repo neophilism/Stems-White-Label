@@ -8,7 +8,7 @@ import { getCurrentTenant } from "@/lib/tenant";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
-  session: { strategy: "database" },
+  session: { strategy: "database", maxAge: 24 * 60 * 60, updateAge: 60 * 60 },
   providers: [
     GithubProvider({
       clientId: process.env.GITHUB_ID ?? "",

@@ -1,8 +1,10 @@
 import Stripe from "stripe";
+import { readWebhookBody } from "@/lib/webhook-body";
 import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { recordPurchaseAnalytics } from "@/lib/analytics";
+import { db } from "@/lib/db";
 import { processStripeWebhookOnce } from "@/lib/stripe-webhook";
 import { markOrderPaid, markOrderPaymentFailed, recordRefund } from "@/lib/payments";
 import { getStripe, getStripeWebhookSecret } from "@/lib/stripe";
@@ -20,7 +22,24 @@ async function orderIdFromPaymentIntent(tx: Prisma.TransactionClient, paymentInt
   return order?.id ?? null;
 }
 
-async function processEvent(event: Stripe.Event, tx: Prisma.TransactionClient) {
+async function refundOrderId(event: Stripe.Event) {
+  if (!["refund.created", "refund.updated"].includes(event.type)) return null;
+  const refund = event.data.object as Stripe.Refund;
+  if (refund.status !== "succeeded") return null;
+  const paymentIntentId = stringId(refund.payment_intent);
+  if (!paymentIntentId) throw new Error("Refund is missing payment intent.");
+  const linked = await db.order.findUnique({ where: { stripePaymentIntentId: paymentIntentId }, select: { id: true } });
+  if (linked) return linked.id;
+  // Stripe does not guarantee event order. Resolve trusted intent metadata before
+  // opening a transaction; a refund preceding fulfillment must remain retryable.
+  const intent = await getStripe().paymentIntents.retrieve(paymentIntentId);
+  const { orderId, tenantId } = intent.metadata;
+  if (!orderId || !tenantId) return null; // Another application's payment.
+  const order = await db.order.findFirst({ where: { id: orderId, tenantId }, select: { id: true } });
+  return order?.id ?? null;
+}
+
+async function processEvent(event: Stripe.Event, tx: Prisma.TransactionClient, resolvedRefundOrderId: string | null) {
   switch (event.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded": {
@@ -98,11 +117,12 @@ async function processEvent(event: Stripe.Event, tx: Prisma.TransactionClient) {
       const refund = event.data.object as Stripe.Refund;
       if (refund.status !== "succeeded") return;
       const paymentIntentId = stringId(refund.payment_intent);
-      const orderId = await orderIdFromPaymentIntent(tx, paymentIntentId);
+      const orderId = resolvedRefundOrderId;
       if (!orderId) return;
       await recordRefund({
         orderId,
         providerRefundId: refund.id,
+        stripePaymentIntentId: paymentIntentId,
         amountCents: refund.amount,
         reason: refund.reason ?? null,
       }, tx);
@@ -119,7 +139,7 @@ export async function POST(request: Request) {
 
   let event: Stripe.Event;
   try {
-    const rawBody = await request.text();
+    const rawBody = await readWebhookBody(request);
     event = getStripe().webhooks.constructEvent(
       rawBody,
       signature,
@@ -133,7 +153,8 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await processStripeWebhookOnce("PAYMENTS", event, (tx) => processEvent(event, tx));
+    const resolvedRefundOrderId = await refundOrderId(event);
+    const result = await processStripeWebhookOnce("PAYMENTS", event, (tx) => processEvent(event, tx, resolvedRefundOrderId));
     if (!result.duplicate && ["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type)) {
       const session = event.data.object as Stripe.Checkout.Session;
       if (session.payment_status === "paid" && session.metadata?.orderId) {

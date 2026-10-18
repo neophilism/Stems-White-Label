@@ -1,3 +1,4 @@
+import { publicOperationError } from "@/lib/public-operation-error";
 import { NextResponse } from "next/server";
 
 import { getTenantApiAccess } from "@/lib/access";
@@ -63,9 +64,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Unable to update Stripe commerce.",
+          publicOperationError(error, "Unable to update Stripe commerce."),
       },
       { status: 400 },
     );
