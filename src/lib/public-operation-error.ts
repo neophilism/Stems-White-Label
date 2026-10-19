@@ -1,6 +1,7 @@
 // Only fixed application validation messages may cross the public API boundary.
 // Provider, database and runtime diagnostics always use the route's fixed fallback.
 const safeMessages = new Set<string>([
+  "Verify the invited email address before accepting.",
   "A checkout can contain at most 20 licenses.",
   "A ready master source is required before publishing.",
   "A reason from 8 to 1000 characters is required.",

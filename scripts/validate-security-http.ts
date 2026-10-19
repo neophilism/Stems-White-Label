@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createServer } from "node:net";
+import { request as httpRequest } from "node:http";
 import { randomBytes } from "node:crypto";
 import { db } from "../src/lib/db";
 import { signPreviewAccess } from "../src/lib/audio-preview-access";
@@ -21,6 +22,7 @@ export async function validateSecurityHttp(suffix: string) {
   } })));
   const users = await Promise.all(["owner", "viewer"].map((role) => db.user.create({ data: { email: role + "-http-" + suffix + "@example.com", emailVerified: new Date() } })));
   const tokens = [randomBytes(32).toString("hex"), randomBytes(32).toString("hex")];
+  tokens.push(randomBytes(32).toString("hex")); // Expired owner session.
   let application: ReturnType<typeof spawn> | undefined;
   let output = "";
   try {
@@ -29,12 +31,15 @@ export async function validateSecurityHttp(suffix: string) {
       { tenantId: tenants[0]!.id, userId: users[1]!.id, role: "VIEWER" },
     ] });
     await db.session.createMany({ data: users.map((user, i) => ({ userId: user.id, sessionToken: tokens[i]!, expires: new Date(Date.now() + 60 * 60_000) })) });
+    await db.session.create({ data: { userId: users[0]!.id, sessionToken: tokens[2]!, expires: new Date(Date.now() - 60_000) } });
     await db.customer.create({ data: { tenantId: tenants[0]!.id, userId: users[0]!.id, email: users[0]!.email!, normalizedEmail: users[0]!.email! } });
     const works = await Promise.all(tenants.map((tenant, i) => db.work.create({ data: { tenantId: tenant.id, slug: "http-work-" + i, title: "Private tenant " + i, status: "PUBLISHED", publishedAt: new Date() } })));
     const preview = await db.audioAsset.create({ data: { tenantId: tenants[1]!.id, workId: works[1]!.id, kind: "PREVIEW", status: "READY", fileName: "fixture.mp3", storageKey: "http-security/fixture.mp3" } });
+    const original = await db.audioAsset.create({ data: { tenantId: tenants[0]!.id, workId: works[0]!.id, kind: "MASTER", status: "READY", fileName: "private-original.wav", storageKey: "http-security/private-original.wav" } });
     const secret = "offline-http-preview-secret-" + suffix;
     const origin = "http://127.0.0.1:" + port;
     const hosts = ["security-a-" + suffix + ".example", "security-b-" + suffix + ".example"];
+    await db.$disconnect(); // The isolated app owns its own session pool.
     application = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
       cwd: process.cwd(), env: { ...process.env, NODE_ENV: "development", NEXTAUTH_URL: origin, NEXTAUTH_SECRET: "offline-http-session-secret-" + suffix, PREVIEW_URL_SECRET: secret, NEXT_TELEMETRY_DISABLED: "1", TRUST_X_FORWARDED_HOST: "false" },
       stdio: ["ignore", "pipe", "pipe"],
@@ -48,19 +53,39 @@ export async function validateSecurityHttp(suffix: string) {
       if (Date.now() - started > 30000) throw new Error("Isolated security app startup exceeded 30 seconds.");
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
-    async function request(path: string, tenant = 0, principal: number | null = 0, method = "GET", requestOrigin?: string) {
-      return fetch(origin + path, { method, redirect: "manual", headers: {
-        host: hosts[tenant]!, ...(principal !== null ? { cookie: "next-auth.session-token=" + tokens[principal] } : {}),
-        ...(requestOrigin ? { origin: requestOrigin } : {}),
-        ...(method !== "GET" ? { "content-type": "application/json" } : {}),
-      }, ...(method !== "GET" ? { body: "{}" } : {}), signal: AbortSignal.timeout(30000) });
+    async function request(path: string, tenant = 0, principal: number | null = 0, method = "GET", requestOrigin?: string): Promise<Response> {
+      // Native fetch replaces Host with the URL authority. Use the HTTP client
+      // to exercise the real virtual-host boundary on the same loopback socket.
+      return new Promise((resolve, reject) => {
+        const outgoing = httpRequest(origin + path, { method, headers: {
+          host: hosts[tenant]!, ...(principal !== null ? { cookie: "next-auth.session-token=" + tokens[principal] } : {}),
+          ...(requestOrigin ? { origin: requestOrigin } : {}),
+          ...(method !== "GET" ? { "content-type": "application/json" } : {}),
+        } }, (incoming) => {
+          const chunks: Buffer[] = []; let bytes = 0;
+          incoming.on("data", (chunk: Buffer) => {
+            bytes += chunk.length;
+            if (bytes > 1024 * 1024) { incoming.destroy(new Error("Security fixture response exceeded 1 MB.")); return; }
+            chunks.push(chunk);
+          });
+          incoming.on("error", reject);
+          incoming.on("end", () => resolve(new Response(Buffer.concat(chunks), { status: incoming.statusCode ?? 500 })));
+        });
+        outgoing.on("error", reject);
+        outgoing.setTimeout(30000, () => outgoing.destroy(new Error("Security fixture request timed out.")));
+        outgoing.end(method !== "GET" ? "{}" : undefined);
+      });
     }
+    const sessionResponse = await request("/api/auth/session");
+    const sessionData = await sessionResponse.json();
+    assert.equal(sessionData.user?.id, users[0]!.id, "Synthetic database session was not accepted: " + JSON.stringify(sessionData));
     const own = await request("/api/admin/works");
     assert.equal(own.status, 200);
     const ownData = await own.json();
     assert.deepEqual(ownData.works.map((work: { id: string }) => work.id), [works[0]!.id]);
     assert.equal((await request("/api/admin/works", 1)).status, 401);
     assert.equal((await request("/api/admin/works", 0, null)).status, 401);
+    assert.equal((await request("/api/admin/works", 0, 2)).status, 401);
     assert.equal((await request("/api/admin/works/" + works[1]!.id)).status, 404);
     assert.equal((await request("/api/admin/works", 0, 1, "POST", "http://" + hosts[0])).status, 401);
     assert.equal((await request("/api/admin/works", 0, 0, "POST", "http://" + hosts[1])).status, 403);
@@ -72,6 +97,12 @@ export async function validateSecurityHttp(suffix: string) {
     const path = "/api/audio-preview/" + preview.id + "?exp=" + signed.expiresAtSeconds + "&sig=" + signed.signature;
     assert.equal((await request(path, 0, null)).status, 404);
     assert.equal((await request("/api/audio-preview/" + preview.id, 1, null)).status, 403);
+    const masterSignature = signPreviewAccess(original.id, Math.floor(Date.now() / 1000) + 300, secret);
+    assert.equal((await request("/api/audio-preview/" + original.id + "?exp=" + masterSignature.expiresAtSeconds + "&sig=" + masterSignature.signature, 0, null)).status, 404);
+    assert.equal((await request("/api/admin/assets/" + preview.id)).status, 404);
+    assert.equal((await request("/api/admin/assets/" + original.id)).status, 200);
+    await db.session.deleteMany({ where: { sessionToken: tokens[0] } });
+    assert.equal((await request("/api/admin/works")).status, 401);
     console.log("Authenticated HTTP security: tenant/role/session/origin/customer/preview negative cases passed.");
   } catch (error) {
     // This contains only logs from synthetic local fixtures, never provider keys.
