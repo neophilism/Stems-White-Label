@@ -121,7 +121,7 @@ async function main() {
       packageId: claimed.id,
       attempts: claimed.attempts,
       maxAttempts: claimed.maxAttempts,
-      error: new Error("synthetic package failure"),
+      error: new Error("provider diagnostic secret-token customer@example.com"),
     });
     assert.equal(retry.exhausted, false);
 
@@ -129,7 +129,8 @@ async function main() {
       where: { id: queued.id },
     });
     assert.equal(requeued.status, "QUEUED");
-    assert.match(requeued.lastError ?? "", /synthetic package failure/);
+    assert.equal(requeued.lastError, "Processing failed. Inspect the job state and retry safely.");
+    assert.doesNotMatch(requeued.lastError ?? "", /secret-token|customer@/);
 
     console.log("Secure delivery database integration validation passed.");
   } finally {

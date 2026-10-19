@@ -16,7 +16,7 @@ This records implementation and reproducible tests, not an independent audit, ce
 | Domain TLS checks | Reject private, local, link-local, transition and documentation addresses; reject mixed DNS answers; pin validated public IP while retaining original SNI/certificate hostname | `public-address.test.ts` and source review of `verifyDomainTls` |
 | Media workers | Allow supported standalone containers and file/pipe protocols; disallow streaming manifests; bound stdout/stderr and execution time; omit raw child-process diagnostics from errors | Actual FFmpeg success and disguised-HLS tests; command overflow/deadline tests |
 | Object storage and media response types | Upload signatures bind Content-Type and Content-Length; object metadata cannot serve active HTML, script or SVG through media routes | `upload-signature.test.ts`, `object-content-type.test.ts` |
-| Public errors and logs | Fixed application validation allowlist; fixed fallback for arbitrary database/provider exceptions; disable raw Prisma production logging; strip exception objects from accepted API paths | `public-operation-error.test.ts`, signed invalid/tampered webhook tests |
+| Public errors and logs | Fixed application validation allowlist; fixed fallback for arbitrary database/provider exceptions; disable raw Prisma production logging; strip exception objects from accepted API paths and worker logs; persist only fixed job diagnostics | `public-operation-error.test.ts`, signed invalid/tampered webhook tests |
 
 Media process execution defaults to 15 minutes, configurable by `MEDIA_PROCESS_TIMEOUT_MS` with a 30-minute hard ceiling. Provider SDK requests have a five-second request timeout and at most one network retry. Webhook database transactions have a 30-second execution bound.
 
