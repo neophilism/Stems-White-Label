@@ -3,6 +3,7 @@ WORKDIR /app
 ENV CI=true NEXT_TELEMETRY_DISABLED=1
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY package.json ./
+COPY prisma ./prisma
 RUN npm install --no-audit --no-fund
 COPY . .
 # The existing Next.js + Prisma application is unchanged; this builds once for a portable host.
