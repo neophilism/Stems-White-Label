@@ -1,0 +1,11 @@
+[build]
+command = "npm run build"
+publish = ".next"
+
+[build.environment]
+NODE_VERSION = "22"
+NEXT_TELEMETRY_DISABLED = "1"
+
+# Netlify's automatic OpenNext Next.js 16 adapter handles App Router and route handlers.
+# Configure private DATABASE_URL, NEXTAUTH_URL, NEXTAUTH_SECRET, media and tenant settings
+# on the provider. A functioning build is not a verified public preview.
