@@ -119,9 +119,9 @@ export async function POST(request: Request) {
       signature,
       getStripeWebhookSecret(),
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Invalid Stripe webhook." },
+      { error: "Invalid Stripe webhook." },
       { status: 400 },
     );
   }
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
     }).catch(() => undefined);
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Stripe webhook processing failed", event.id, error);
+    console.error("Stripe webhook processing failed", { eventType: event.type, errorType: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ error: "Webhook processing failed." }, { status: 500 });
   }
 }
