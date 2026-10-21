@@ -1,19 +1,10 @@
-name: Public deployment readiness
-
+name: Public deployment readiness (on-demand)
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  schedule:
-    - cron: "*/10 * * * *"
-  workflow_dispatch:
-
 permissions:
   contents: read
-
-concurrency:
-  group: public-stems-readiness
-  cancel-in-progress: true
-
 jobs:
   readiness:
     runs-on: ubuntu-latest
@@ -23,7 +14,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Check deployment liveness and database readiness
+      - name: Verify configured production origin when one exists
+        if: ${{ vars.STEMS_SITE_URL != '' }}
         env:
-          STEMS_SITE_URL: https://stems-white-label-preview.onrender.com
+          STEMS_SITE_URL: ${{ vars.STEMS_SITE_URL }}
         run: node scripts/live-smoke.mjs
+      - name: Explain why external readiness was not attempted
+        if: ${{ vars.STEMS_SITE_URL == '' }}
+        run: echo 'No STEMS_SITE_URL is configured. Hosted readiness NOT VERIFIED; suspended Render endpoint not probed.' >> "$GITHUB_STEP_SUMMARY"
