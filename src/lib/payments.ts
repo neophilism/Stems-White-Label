@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { assertPaidOrderNotReopened, assertRefundAmounts, assertRefundReplay } from "@/lib/payment-integrity";
 
 export function normalizeCustomerEmail(email: string) {
   return email.trim().toLowerCase();
@@ -22,6 +23,8 @@ export async function markOrderPaid(input: {
       },
     });
     if (!order) throw new Error("Order not found.");
+    assertPaidOrderNotReopened(order.status);
+    if (order.status === "CANCELED") throw new Error("Canceled order cannot be fulfilled without payment reconciliation.");
 
     const customer = await tx.customer.upsert({
       where: {
@@ -184,17 +187,36 @@ export async function recordRefund(input: {
     const payment = order.payments[0];
     if (!payment) throw new Error("Order payment not found.");
 
-    await tx.refund.upsert({
+    if (order.status !== "PAID" && order.status !== "PARTIALLY_REFUNDED" && order.status !== "REFUNDED") {
+      throw new Error("Only settled payments may be refunded.");
+    }
+    const existingRefund = await tx.refund.findUnique({
       where: { providerRefundId: input.providerRefundId },
-      update: { amountCents: input.amountCents, reason: input.reason ?? null },
-      create: {
-        paymentId: payment.id,
-        providerRefundId: input.providerRefundId,
-        amountCents: input.amountCents,
-        status: "REFUNDED",
-        reason: input.reason ?? null,
-      },
     });
+    if (existingRefund) {
+      assertRefundReplay(existingRefund, {
+        paymentId: payment.id,
+        amountCents: input.amountCents,
+      });
+    } else {
+      const existingTotal = order.payments[0]!.refunds.reduce(
+        (total, refund) => total + refund.amountCents, 0,
+      );
+      assertRefundAmounts({
+        capturedCents: payment.amountCents,
+        previousRefundsCents: existingTotal,
+        refundCents: input.amountCents,
+      });
+      await tx.refund.create({
+        data: {
+          paymentId: payment.id,
+          providerRefundId: input.providerRefundId,
+          amountCents: input.amountCents,
+          status: "REFUNDED",
+          reason: input.reason ?? null,
+        },
+      });
+    }
 
     const refunds = await tx.refund.findMany({ where: { paymentId: payment.id } });
     const refundedCents = refunds.reduce((sum, refund) => sum + refund.amountCents, 0);

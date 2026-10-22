@@ -149,6 +149,41 @@ async function main() {
     assert.ok(revoked.revokedAt);
     assert.equal(revoked.revocationReason, "Order fully refunded.");
 
+    // A duplicate payment webhook must never restore download rights after refund.
+    await assert.rejects(
+      () => markOrderPaid({
+        orderId: order.id,
+        email: "Buyer@Example.com",
+        stripeCustomerId: "cus_validation",
+        stripePaymentIntentId: "pi_validation",
+      }),
+      /refunded order/,
+    );
+    await assert.rejects(
+      () => recordRefund({
+        orderId: order.id,
+        providerRefundId: "re_partial_validation",
+        amountCents: 2501,
+      }),
+      /provider refund ID/,
+    );
+    await assert.rejects(
+      () => recordRefund({
+        orderId: order.id,
+        providerRefundId: "re_over_validation",
+        amountCents: 1,
+      }),
+      /Refund exceeds/,
+    );
+    const untouchedRefund = await db.refund.findUniqueOrThrow({
+      where: { providerRefundId: "re_partial_validation" },
+    });
+    assert.equal(untouchedRefund.amountCents, 2500);
+    const stillRevoked = await db.purchaseLicense.findFirstOrThrow({
+      where: { orderId: order.id },
+    });
+    assert.ok(stillRevoked.revokedAt);
+
     console.log("Checkout/order database integration validation passed.");
   } finally {
     await db.order.deleteMany({ where: { tenantId: tenant.id } });
