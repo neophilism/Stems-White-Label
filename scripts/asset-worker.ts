@@ -49,7 +49,7 @@ async function main() {
     try {
       await processAudioAsset(job.audioAssetId);
       await markProcessingJobSucceeded(job.id);
-      console.log("Processed audio asset", job.audioAssetId);
+      console.log("Asset job completed", { jobId: job.id, outcome: "succeeded" });
     } catch (error) {
       const result = await markProcessingJobFailed({
         jobId: job.id,
@@ -60,19 +60,18 @@ async function main() {
         error,
       });
 
-      console.error(
-        "Audio asset processing failed",
-        job.audioAssetId,
-        result,
-        error,
-      );
+      console.error("Asset job failed", {
+        jobId: job.id,
+        outcome: result.exhausted ? "exhausted" : "retry_scheduled",
+        nextAttemptAt: result.retryAt?.toISOString() ?? null,
+      });
     }
   }
 }
 
 main()
   .catch((error) => {
-    console.error("Asset worker terminated", error);
+    console.error("Asset worker terminated", { category: "worker-fatal", errorType: error instanceof Error ? error.name : "unknown" });
     process.exitCode = 1;
   })
   .finally(async () => {
